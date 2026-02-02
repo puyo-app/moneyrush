@@ -2,56 +2,78 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>1分で稼ぐ - 1min Money Rush</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>1min Money Rush</title>
     <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Black+Ops+One&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
     
     <style>
-        body {
-            font-family: 'Roboto', sans-serif;
+        /* Reset & Layout Fixes for Mobile */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100dvh; /* Dynamic Viewport Height */
+            overflow: hidden; /* Disable Scroll */
+            touch-action: none; /* Disable native gestures */
             background-color: #1a202c;
-            color: #fff;
-            overscroll-behavior: none;
+            font-family: 'Roboto', sans-serif;
             user-select: none;
             -webkit-user-select: none;
         }
-        
-        /* Digital Clock Font */
-        .font-digital {
-            font-family: 'Black Ops One', cursive;
-            font-variant-numeric: tabular-nums;
+
+        #app {
+            height: 100dvh;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
         }
 
-        /* Grid & Cell Styling */
+        /* Digital Clock */
+        .font-digital { font-family: 'Black Ops One', cursive; font-variant-numeric: tabular-nums; }
+
+        /* Grid Layout - Strictly Fixed */
+        .board-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+        
         .game-grid {
             display: grid;
             grid-template-columns: repeat(4, 1fr);
+            grid-template-rows: repeat(4, 1fr);
             gap: 6px;
-            aspect-ratio: 1;
+            /* Ensure grid is square but fits within available space */
             width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
+            max-width: 90vw; 
+            aspect-ratio: 1 / 1; 
+            max-height: 50vh; /* Don't let it grow too tall */
         }
+
         .cell {
             background: #2d3748;
             border-radius: 8px;
             position: relative;
-            display: flex;
-            align-items: center;
-            justify-content: center;
             box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
-            touch-action: none; /* Important for custom drag */
+            /* Fixed Layout: Content doesn't affect size */
+            width: 100%;
+            height: 100%; 
         }
-        .cell.active {
-            border: 2px solid #fbbf24;
-        }
+        
+        /* Highlight valid drop target or selection */
+        .cell.selected { border: 2px solid #fbbf24; }
+        .cell.can-place { background: #4a5568; border: 1px dashed #fbbf24; }
 
-        /* Panel Styling */
+        /* Panel Design */
         .panel {
-            width: 90%;
-            height: 90%;
+            position: absolute;
+            top: 2px; left: 2px; right: 2px; bottom: 2px;
             border-radius: 6px;
             display: flex;
             flex-direction: column;
@@ -59,213 +81,188 @@
             justify-content: center;
             font-size: 0.8rem;
             font-weight: bold;
-            position: relative;
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            transition: transform 0.1s;
-            pointer-events: none; /* Let clicks pass to cell for handling */
+            z-index: 10;
         }
-        
+        /* Being Dragged State */
+        .panel.dragging { opacity: 0.5; }
+
         /* Colors */
         .bg-red { background-color: #FF6B6B; color: #fff; }
         .bg-blue { background-color: #4ECDC4; color: #1a202c; }
         .bg-green { background-color: #95E1D3; color: #1a202c; }
         .bg-black { background-color: #2C3E50; color: #fff; border: 1px solid #4a5568; }
 
-        /* Progress Bars */
+        /* Bars */
         .bar-container {
-            width: 80%;
-            height: 4px;
-            background: rgba(0,0,0,0.3);
-            margin-top: 2px;
-            border-radius: 2px;
-            overflow: hidden;
+            width: 80%; height: 4px; background: rgba(0,0,0,0.3);
+            margin-top: 2px; border-radius: 2px; overflow: hidden;
         }
         .bar-fill { height: 100%; transition: width 0.2s linear; }
-        .bar-food { background-color: #F6E05E; } /* Food: Yellow */
-        .bar-task { background-color: #63B3ED; } /* Task: Blue */
+        .bar-food { background-color: #F6E05E; }
+        .bar-task { background-color: #63B3ED; }
 
-        /* Floating Text Animation */
+        /* Footer / Shop Layout */
+        .footer-area {
+            background-color: #1f2937;
+            display: flex;
+            flex-direction: column;
+            /* Fixed height to ensure it doesn't get pushed out */
+            height: 35%; 
+            max-height: 300px;
+            border-top: 1px solid #374151;
+            z-index: 20;
+        }
+
+        /* Floating Text */
         .float-text {
-            position: absolute;
-            font-weight: bold;
-            color: #fbbf24;
-            pointer-events: none;
-            animation: floatUp 1s ease-out forwards;
-            z-index: 50;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+            position: absolute; font-weight: bold; color: #fbbf24;
+            pointer-events: none; animation: floatUp 1s ease-out forwards;
+            z-index: 50; text-shadow: 0 2px 4px rgba(0,0,0,0.8);
         }
         @keyframes floatUp {
             0% { transform: translateY(0) scale(1); opacity: 1; }
             100% { transform: translateY(-30px) scale(1.2); opacity: 0; }
         }
 
-        /* Tabs */
-        .tab-btn {
-            flex: 1;
-            text-align: center;
-            padding: 10px;
-            background: #2d3748;
-            color: #718096;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-        .tab-btn.active {
-            background: #4a5568;
-            color: #fff;
-            border-bottom: 3px solid #fbbf24;
-        }
-
         /* Drag Ghost */
         .drag-ghost {
-            position: fixed;
-            width: 60px;
-            height: 60px;
-            pointer-events: none;
-            z-index: 1000;
-            opacity: 0.8;
-            transform: translate(-50%, -50%);
+            position: fixed; width: 70px; height: 70px;
+            pointer-events: none; z-index: 9999;
+            opacity: 0.9; transform: translate(-50%, -50%);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.5);
         }
 
-        /* Shake Animation for No Money */
-        .shake { animation: shake 0.3s; }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+        /* Tab Button */
+        .tab-btn {
+            flex: 1; text-align: center; padding: 12px 0;
+            background: #2d3748; color: #718096;
+            font-weight: bold; font-size: 0.9rem;
+            border-top: 2px solid transparent;
+        }
+        .tab-btn.active {
+            background: #4a5568; color: #fff;
+            border-top: 2px solid #fbbf24;
         }
     </style>
 </head>
 <body>
 
-<div id="app" class="h-screen w-screen flex flex-col overflow-hidden">
+<div id="app">
 
-    <header class="p-3 bg-gray-800 flex justify-between items-center shadow-lg z-10">
+    <header class="p-3 bg-gray-800 flex justify-between items-center shadow-md z-30 shrink-0 h-16">
         <div class="flex flex-col">
-            <span class="text-xs text-gray-400">TIME LIMIT</span>
-            <div class="font-digital text-3xl transition-colors duration-300" 
+            <span class="text-[10px] text-gray-400">TIME LIMIT</span>
+            <div class="font-digital text-3xl transition-colors duration-300 leading-none" 
                  :class="gameState === 'setup' ? 'text-red-500' : 'text-white'">
                 {{ displayTime }}
             </div>
         </div>
         <div class="text-right">
-            <span class="text-xs text-gray-400">FUNDS</span>
-            <div class="text-2xl font-bold text-yellow-400">
-                {{ formatMoney(money) }}<span class="text-sm text-white"></span>
+            <span class="text-[10px] text-gray-400">FUNDS</span>
+            <div class="text-2xl font-bold text-yellow-400 leading-none">
+                {{ formatMoney(money) }}
             </div>
         </div>
     </header>
 
-    <main class="flex-1 flex flex-col items-center justify-center bg-gray-900 p-4 relative">
+    <main class="board-container bg-gray-900" 
+          @touchstart.prevent="handleGlobalTouch"
+          @touchmove.prevent="handleGlobalMove"
+          @touchend.prevent="handleGlobalEnd">
         
-        <div v-if="gameState === 'result'" class="absolute inset-0 bg-black/80 z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div v-if="gameState === 'result'" class="absolute inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-6 text-center">
             <h2 class="text-4xl font-bold text-white mb-4">FINISH!</h2>
-            <p class="text-gray-300 mb-2">最終所持金</p>
             <div class="text-5xl font-bold text-yellow-400 mb-8 font-digital">{{ formatMoney(money) }}</div>
-            <button @click="resetGame" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full shadow-lg transform active:scale-95 transition">
-                もう一度遊ぶ
-            </button>
+            <button @click="resetGame" class="bg-blue-500 text-white font-bold py-3 px-8 rounded-full shadow-lg">RETRY</button>
         </div>
 
         <div class="game-grid" ref="gridRef">
-            <div 
-                v-for="(cell, index) in grid" 
-                :key="index"
+            <div v-for="(cell, index) in grid" :key="index"
                 class="cell"
-                :class="{ 'active': selectedCellIndex === index }"
-                @mousedown="handleInputStart(index, $event)"
-                @touchstart.passive="handleInputStart(index, $event)"
-                @mousemove="handleInputMove($event)"
-                @touchmove.passive="handleInputMove($event)"
-                @mouseup="handleInputEnd(index)"
-                @touchend="handleInputEnd(index)"
+                :class="{ 
+                    'selected': selectedCellIndex === index,
+                    'can-place': selectedShopItem && canAfford(selectedShopItem)
+                }"
+                @mousedown="handleMouseStart(index, $event)"
+                @touchstart="handleTouchStart(index, $event)"
             >
-                <div v-if="cell" :class="['panel', getPanelColorClass(cell)]">
+                <div v-if="cell" :class="['panel', getPanelColorClass(cell), { 'dragging': dragState.sourceIndex === index }]">
                     <div class="text-2xl mb-1">{{ getPanelIcon(cell) }}</div>
                     
-                    <div v-if="cell.type === 'person'" class="text-[10px] leading-tight">
-                        Rank {{ cell.rank.toFixed(1) }}<br>
-                        Pw:{{cell.str}} In:{{cell.int}}
+                    <div v-if="cell.type === 'person'" class="text-[9px] leading-tight text-center">
+                        x{{ cell.rank.toFixed(1) }}<br>P:{{cell.str}} I:{{cell.int}}
                     </div>
-                    <div v-if="cell.type === 'food'" class="text-[10px] font-bold">
-                        {{ cell.hp }}
-                    </div>
-                    <div v-if="cell.type === 'task'" class="text-[10px]">
-                        {{ cell.hp }}/{{ cell.maxHp }}
-                    </div>
-                    <div v-if="cell.type === 'skill'" class="text-[10px]">
-                        {{ getSkillName(cell) }}
-                    </div>
+                    <div v-if="cell.type === 'food'" class="text-[9px] font-bold">{{ cell.hp }}</div>
+                    <div v-if="cell.type === 'task'" class="text-[9px]">{{ cell.hp }}/{{ cell.maxHp }}</div>
+                    <div v-if="cell.type === 'skill'" class="text-[9px]">{{ getSkillName(cell) }}</div>
 
-                    <div v-if="cell.type === 'food'" class="bar-container">
-                        <div class="bar-fill bar-food" :style="{ width: (cell.hp / cell.maxHp * 100) + '%' }"></div>
-                    </div>
-                    <div v-if="cell.type === 'task'" class="bar-container">
-                        <div class="bar-fill bar-task" :style="{ width: ((cell.maxHp - cell.hp) / cell.maxHp * 100) + '%' }"></div>
-                    </div>
+                    <div v-if="cell.type === 'food'" class="bar-container"><div class="bar-fill bar-food" :style="{ width: (cell.hp / cell.maxHp * 100) + '%' }"></div></div>
+                    <div v-if="cell.type === 'task'" class="bar-container"><div class="bar-fill bar-task" :style="{ width: ((cell.maxHp - cell.hp) / cell.maxHp * 100) + '%' }"></div></div>
                 </div>
             </div>
         </div>
 
-        <div v-for="ft in floatingTexts" :key="ft.id" class="float-text" :style="{ left: ft.x + 'px', top: ft.y + 'px' }">
-            {{ ft.text }}
-        </div>
-
+        <div v-for="ft in floatingTexts" :key="ft.id" class="float-text" :style="{ left: ft.x + 'px', top: ft.y + 'px' }">{{ ft.text }}</div>
     </main>
 
-    <footer class="bg-gray-800 border-t border-gray-700 shadow-xl z-20 h-[35vh] flex flex-col">
+    <footer class="footer-area">
         
-        <div class="h-14 px-4 bg-gray-900 flex items-center justify-between border-b border-gray-700">
-            <div v-if="selectedCellIndex !== null && grid[selectedCellIndex]" class="flex items-center w-full justify-between">
-                <div class="text-sm text-gray-300">
-                    <span class="font-bold text-white">{{ getPanelName(grid[selectedCellIndex]) }}</span>
-                    <span v-if="grid[selectedCellIndex].type === 'person'" class="ml-2 text-xs">報酬倍率: x{{grid[selectedCellIndex].rank.toFixed(1)}}</span>
+        <div class="h-12 px-4 bg-gray-900 flex items-center justify-between border-b border-gray-700 shrink-0">
+            <div v-if="selectedCellIndex !== null && grid[selectedCellIndex]" class="flex items-center w-full justify-between animate-fade-in">
+                <div class="text-xs text-gray-300">
+                    <span class="font-bold text-white text-sm">{{ getPanelName(grid[selectedCellIndex]) }}</span>
                 </div>
-                <button @click="deletePanel(selectedCellIndex)" class="bg-red-500 text-white px-3 py-1 rounded text-sm font-bold shadow active:scale-95">
+                <button @click="deletePanel(selectedCellIndex)" class="bg-red-500 hover:bg-red-600 text-white px-4 py-1.5 rounded-full text-xs font-bold shadow active:scale-95 transition">
                     売却 (+{{ Math.floor(grid[selectedCellIndex].cost * 0.5) }})
                 </button>
             </div>
-            <div v-else-if="selectedShopItem" class="flex items-center w-full justify-between">
-                <div class="text-sm">
-                    <span class="font-bold block" :class="canAfford(selectedShopItem) ? 'text-white' : 'text-red-400'">
+            <div v-else-if="selectedShopItem" class="flex items-center w-full justify-between animate-fade-in">
+                <div class="text-xs">
+                    <span class="font-bold block text-sm" :class="canAfford(selectedShopItem) ? 'text-white' : 'text-red-400'">
                         {{ selectedShopItem.name }} ({{ selectedShopItem.cost }}万)
                     </span>
-                    <span class="text-xs text-gray-400">{{ selectedShopItem.desc }}</span>
+                    <span class="text-gray-400">盤面タップで配置</span>
                 </div>
+                <button @click="selectedShopItem = null" class="text-gray-400 text-xs px-2">キャンセル</button>
             </div>
-            <div v-else class="text-gray-500 text-sm">パネルを選択または配置してください</div>
+            <div v-else class="text-gray-500 text-xs w-full text-center">
+                下で選んで上で配置 / パネルをドラッグで移動
+            </div>
         </div>
 
-        <div class="flex-1 overflow-x-auto p-2 flex items-center space-x-3 bg-gray-800">
+        <div class="flex-1 overflow-x-auto p-2 flex items-center space-x-3 bg-gray-800 w-full">
             <div 
                 v-for="(item, idx) in currentCategoryItems" 
                 :key="idx"
-                class="flex-shrink-0 w-16 h-20 bg-gray-700 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 relative transition-all"
+                class="flex-shrink-0 w-16 h-20 rounded-lg flex flex-col items-center justify-center cursor-pointer border-2 relative transition-all active:scale-95"
                 :class="[
-                    selectedShopItem === item ? 'border-yellow-400 bg-gray-600' : 'border-transparent',
+                    selectedShopItem === item ? 'border-yellow-400 bg-gray-700' : 'border-gray-600 bg-gray-700',
                     !canAfford(item) ? 'opacity-50' : ''
                 ]"
                 @click="selectShopItem(item)"
-                @mousedown="handleShopDragStart(item, $event)"
-                @touchstart.passive="handleShopDragStart(item, $event)"
             >
                 <div class="text-2xl mb-1">{{ item.icon }}</div>
-                <div class="text-xs font-bold text-center leading-none" :class="canAfford(item) ? 'text-white' : 'text-red-400'">
+                <div class="text-[10px] font-bold text-center leading-none" :class="canAfford(item) ? 'text-white' : 'text-red-400'">
                     {{ item.cost }}万
                 </div>
-                <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full" :class="getColorDot(item.color)"></div>
+                <div class="absolute -top-1 -right-1 w-3 h-3 rounded-full border border-gray-800" :class="getColorDot(item.color)"></div>
             </div>
         </div>
 
-        <div class="flex border-t border-gray-700">
+        <div class="flex border-t border-gray-700 shrink-0">
             <div class="tab-btn" :class="{ active: activeTab === 'person' }" @click="activeTab = 'person'">人</div>
-            <div class="tab-btn" :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">食物</div>
+            <div class="tab-btn" :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">食</div>
             <div class="tab-btn" :class="{ active: activeTab === 'task' }" @click="activeTab = 'task'">タスク</div>
-            <div class="tab-btn" :class="{ active: activeTab === 'skill' }" @click="activeTab = 'skill'">スキル</div>
+            <div class="tab-btn" :class="{ active: activeTab === 'skill' }" @click="activeTab = 'skill'">技</div>
         </div>
     </footer>
 
-    <div v-if="dragState.isDragging" class="drag-ghost panel" :class="getPanelColorClass(dragState.item)" :style="{ left: dragState.x + 'px', top: dragState.y + 'px' }">
-        <div class="text-2xl">{{ getPanelIcon(dragState.item) }}</div>
+    <div v-if="dragState.isDragging && dragState.item" 
+         class="drag-ghost panel" 
+         :class="getPanelColorClass(dragState.item)" 
+         :style="{ left: dragState.x + 'px', top: dragState.y + 'px' }">
+        <div class="text-3xl">{{ getPanelIcon(dragState.item) }}</div>
     </div>
 
 </div>
@@ -275,246 +272,292 @@ const { createApp, ref, computed, onMounted, onUnmounted, reactive } = Vue;
 
 createApp({
     setup() {
-        // --- Game Constants & Data ---
+        // --- Data ---
         const ITEMS = {
             person: [
-                { id: 'p_red', name: '肉体派', type: 'person', color: 'red', cost: 30, str: 15, int: 5, rank: 1.0, icon: '💪', desc: '力仕事が得意' },
-                { id: 'p_blue', name: '頭脳派', type: 'person', color: 'blue', cost: 30, str: 5, int: 15, rank: 1.0, icon: '🧠', desc: '知的労働が得意' },
-                { id: 'p_green', name: 'バランス', type: 'person', color: 'green', cost: 30, str: 10, int: 10, rank: 1.0, icon: '⚖️', desc: '万能型' },
-                { id: 'p_black', name: '低スぺ', type: 'person', color: 'black', cost: 30, str: 5, int: 5, rank: 1.0, icon: '♟️', desc: '能力は低いが黒案件に必須' },
+                { id: 'p_red', name: '肉体派', type: 'person', color: 'red', cost: 30, str: 15, int: 5, rank: 1.0, icon: '💪' },
+                { id: 'p_blue', name: '頭脳派', type: 'person', color: 'blue', cost: 30, str: 5, int: 15, rank: 1.0, icon: '🧠' },
+                { id: 'p_green', name: 'バランス', type: 'person', color: 'green', cost: 30, str: 10, int: 10, rank: 1.0, icon: '⚖️' },
+                { id: 'p_black', name: '低スぺ', type: 'person', color: 'black', cost: 30, str: 5, int: 5, rank: 1.0, icon: '♟️' },
             ],
             food: [
-                { id: 'f_red', name: '赤の食料', type: 'food', color: 'red', cost: 5, hp: 200, maxHp: 200, icon: '🍖', desc: '赤の人が好物' },
-                { id: 'f_blue', name: '青の食料', type: 'food', color: 'blue', cost: 5, hp: 200, maxHp: 200, icon: '🐟', desc: '青の人が好物' },
-                { id: 'f_green', name: '野菜', type: 'food', color: 'green', cost: 10, hp: 200, maxHp: 200, icon: '🥦', desc: '誰でも燃費良し' },
-                { id: 'f_black', name: '謎の肉', type: 'food', color: 'black', cost: 0, hp: 200, maxHp: 200, icon: '☠️', desc: '無くなると周囲が死亡' },
+                { id: 'f_red', name: '肉', type: 'food', color: 'red', cost: 5, hp: 200, maxHp: 200, icon: '🍖' },
+                { id: 'f_blue', name: '魚', type: 'food', color: 'blue', cost: 5, hp: 200, maxHp: 200, icon: '🐟' },
+                { id: 'f_green', name: '野菜', type: 'food', color: 'green', cost: 10, hp: 200, maxHp: 200, icon: '🥦' },
+                { id: 'f_black', name: '謎肉', type: 'food', color: 'black', cost: 0, hp: 200, maxHp: 200, icon: '☠️' },
             ],
             task: [
-                { id: 't_red', name: '肉体労働', type: 'task', color: 'red', cost: 0, hp: 0, maxHp: 300, icon: '📦', reward: 25, desc: '力で進行' },
-                { id: 't_blue', name: '頭脳労働', type: 'task', color: 'blue', cost: 0, hp: 0, maxHp: 300, icon: '💻', reward: 25, desc: '知で進行' },
-                { id: 't_green', name: '協力案件', type: 'task', color: 'green', cost: 0, hp: 0, maxHp: 400, icon: '🤝', reward: 35, desc: '合計値で進行' },
-                { id: 't_black', name: '巨大案件', type: 'task', color: 'black', cost: 0, hp: 0, maxHp: 1000, icon: '🏢', reward: 100, desc: '黒い人が隣接必須' },
+                { id: 't_red', name: '肉体労働', type: 'task', color: 'red', cost: 0, hp: 0, maxHp: 400, icon: '📦', reward: 25 },
+                { id: 't_blue', name: '頭脳労働', type: 'task', color: 'blue', cost: 0, hp: 0, maxHp: 400, icon: '💻', reward: 25 },
+                { id: 't_green', name: '協力案件', type: 'task', color: 'green', cost: 0, hp: 0, maxHp: 400, icon: '🤝', reward: 35 },
+                { id: 't_black', name: '巨大案件', type: 'task', color: 'black', cost: 0, hp: 0, maxHp: 1000, icon: '🏢', reward: 100 },
             ],
             skill: [
-                { id: 's_red', name: 'ダンベル', type: 'skill', color: 'red', cost: 30, icon: '🏋️', desc: '隣接の力を永続強化' },
-                { id: 's_blue', name: '技術書', type: 'skill', color: 'blue', cost: 30, icon: '📚', desc: '隣接の知を永続強化' },
-                { id: 's_green', name: '観葉植物', type: 'skill', color: 'green', cost: 30, icon: '🌿', desc: '隣接の消費カロリー半減' },
-                { id: 's_black', name: '昇進辞令', type: 'skill', color: 'black', cost: 30, icon: '📜', desc: '10秒毎に周囲を昇進' },
+                { id: 's_red', name: 'ダンベル', type: 'skill', color: 'red', cost: 30, icon: '🏋️' },
+                { id: 's_blue', name: '技術書', type: 'skill', color: 'blue', cost: 30, icon: '📚' },
+                { id: 's_green', name: '観葉植物', type: 'skill', color: 'green', cost: 30, icon: '🌿' },
+                { id: 's_black', name: '昇進辞令', type: 'skill', color: 'black', cost: 30, icon: '📜' },
             ]
         };
 
-        // --- State ---
-        const gameState = ref('setup'); // setup, playing, result
-        const time = ref(10); // Setup starts at 10
+        const gameState = ref('setup');
+        const time = ref(10);
         const money = ref(100);
         const grid = ref(new Array(16).fill(null));
         const activeTab = ref('person');
         const selectedShopItem = ref(null);
         const selectedCellIndex = ref(null);
         const floatingTexts = ref([]);
-        
-        // Drag State
+        const gridRef = ref(null);
+
         const dragState = reactive({
             isDragging: false,
-            item: null, // Data object of what is being dragged
-            sourceIndex: null, // If from grid, index. If from shop, null.
-            x: 0,
-            y: 0
+            item: null,
+            sourceIndex: null,
+            x: 0, y: 0,
+            startTime: 0
         });
 
-        // Loop vars
+        // --- Logic Loop (Same as before but optimized) ---
         let lastTime = 0;
-        let animationFrameId = null;
-        let skillTimer = 0; // For 1 sec tick skills
-        let blackSkillTimer = 0; // For 10 sec black skill
+        let skillTimer = 0, blackSkillTimer = 0;
 
-        // --- Core Logic ---
-
-        // Helpers
-        const getNeighbors = (idx) => {
-            const neighbors = [];
-            const row = Math.floor(idx / 4);
-            const col = idx % 4;
-            const deltas = [[-1, 0], [1, 0], [0, -1], [0, 1]]; // Up, Down, Left, Right
-            
-            deltas.forEach(([dr, dc]) => {
-                const nr = row + dr;
-                const nc = col + dc;
-                if (nr >= 0 && nr < 4 && nc >= 0 && nc < 4) {
-                    const nIdx = nr * 4 + nc;
-                    if (grid.value[nIdx]) {
-                        neighbors.push({ ...grid.value[nIdx], index: nIdx, originalRef: grid.value[nIdx] });
-                    }
-                }
-            });
-            return neighbors;
-        };
-
-        // Game Loop
         const gameLoop = (timestamp) => {
             if (!lastTime) lastTime = timestamp;
-            const deltaTime = (timestamp - lastTime) / 1000;
+            const dt = (timestamp - lastTime) / 1000;
             lastTime = timestamp;
 
             if (gameState.value === 'setup') {
-                time.value -= deltaTime;
-                if (time.value <= 0) {
-                    time.value = 60;
-                    gameState.value = 'playing';
-                }
+                time.value -= dt;
+                if (time.value <= 0) { time.value = 60; gameState.value = 'playing'; }
             } else if (gameState.value === 'playing') {
-                time.value -= deltaTime;
-                if (time.value <= 0) {
-                    time.value = 0;
-                    gameState.value = 'result';
-                    return; // End loop
-                }
-                updateGameLogic(deltaTime);
+                time.value -= dt;
+                if (time.value <= 0) { time.value = 0; gameState.value = 'result'; return; }
+                updateLogic(dt);
             }
-
-            animationFrameId = requestAnimationFrame(gameLoop);
+            requestAnimationFrame(gameLoop);
         };
 
-        const updateGameLogic = (dt) => {
-            // Skill Timers
-            skillTimer += dt;
-            blackSkillTimer += dt;
-            const triggerPassive = skillTimer >= 1.0;
-            const triggerBlack = blackSkillTimer >= 10.0;
+        const getNeighbors = (idx) => {
+            const row = Math.floor(idx / 4), col = idx % 4;
+            return [[-1,0],[1,0],[0,-1],[0,1]].map(([r,c]) => {
+                const nr = row + r, nc = col + c;
+                if (nr >= 0 && nr < 4 && nc >= 0 && nc < 4) {
+                    const nIdx = nr * 4 + nc;
+                    return grid.value[nIdx] ? { ...grid.value[nIdx], index: nIdx } : null;
+                }
+                return null;
+            }).filter(n => n);
+        };
 
-            if (triggerPassive) skillTimer = 0;
-            if (triggerBlack) blackSkillTimer = 0;
+        const updateLogic = (dt) => {
+            skillTimer += dt; blackSkillTimer += dt;
+            const trigSkill = skillTimer >= 1.0;
+            const trigBlack = blackSkillTimer >= 10.0;
+            if (trigSkill) skillTimer = 0;
+            if (trigBlack) blackSkillTimer = 0;
 
-            // Process Grid
             grid.value.forEach((cell, idx) => {
                 if (!cell) return;
+                const neighbors = getNeighbors(idx);
 
-                // --- Skill Effects ---
+                // Skill
                 if (cell.type === 'skill') {
-                    const neighbors = getNeighbors(idx);
                     neighbors.forEach(n => {
-                        const target = grid.value[n.index]; // Direct reference
-                        if (target.type === 'person') {
-                            if (cell.color === 'red' && triggerPassive) target.str += 1;
-                            if (cell.color === 'blue' && triggerPassive) target.int += 1;
-                            if (cell.color === 'black' && triggerBlack) {
-                                target.rank = Math.min(2.0, target.rank + 0.1);
-                                spawnFloatText('昇進!', idx);
+                        const t = grid.value[n.index];
+                        if (t.type === 'person') {
+                            if (cell.color === 'red' && trigSkill) t.str++;
+                            if (cell.color === 'blue' && trigSkill) t.int++;
+                            if (cell.color === 'black' && trigBlack) {
+                                t.rank = Math.min(2.0, t.rank + 0.1);
+                                spawnFloatText('昇進!', n.index);
                             }
                         }
                     });
                 }
 
-                // --- Person Logic ---
+                // Person Work/Eat
                 if (cell.type === 'person') {
-                    const neighbors = getNeighbors(idx);
+                    // Eat
+                    const foods = neighbors.filter(n => n.type === 'food').sort((a,b) => {
+                        const isFavA = a.color === cell.color || a.color === 'green';
+                        const isFavB = b.color === cell.color || b.color === 'green';
+                        return (isFavB ? 1 : 0) - (isFavA ? 1 : 0);
+                    });
                     
-                    // 1. Eat Food
-                    const foods = neighbors.filter(n => n.type === 'food');
                     let canWork = false;
-
-                    if (foods.length > 0) {
-                        // Priority: Own Color (Favorite) > Green (Super) > Others
-                        // Sort logic: Lower index is better
-                        foods.sort((a, b) => {
-                            const isFavA = (a.color === cell.color) || (a.color === 'green');
-                            const isFavB = (b.color === cell.color) || (b.color === 'green');
-                            return (isFavB ? 1 : 0) - (isFavA ? 1 : 0); // true comes first
-                        });
-
-                        const foodToEat = grid.value[foods[0].index];
-                        
-                        // Check for Green Skill (Plant) neighbor to halve consumption
+                    if (foods.length) {
+                        const fIdx = foods[0].index;
                         const hasGreenSkill = neighbors.some(n => n.type === 'skill' && n.color === 'green');
+                        let cost = (grid.value[fIdx].color === cell.color || grid.value[fIdx].color === 'green') ? 10 : 20;
+                        if (hasGreenSkill) cost *= 0.5;
                         
-                        // Consumption Rate
-                        let consumeAmount = 20; // Default Bad
-                        if (foodToEat.color === cell.color || foodToEat.color === 'green' || foodToEat.color === 'black') {
-                            consumeAmount = 10; // Good/Neutral
-                        }
-                        if (hasGreenSkill) consumeAmount *= 0.5;
-
-                        // Apply Consumption
-                        foodToEat.hp -= consumeAmount * dt;
+                        grid.value[fIdx].hp -= cost * dt;
                         canWork = true;
 
-                        // Food Depletion & Black Food Death Logic
-                        if (foodToEat.hp <= 0) {
-                            if (foodToEat.color === 'black') {
-                                // Kill surrounding people
-                                const foodNeighbors = getNeighbors(foods[0].index);
-                                foodNeighbors.forEach(fn => {
-                                    if (fn.type === 'person') {
-                                        grid.value[fn.index] = null; // DIE
-                                        spawnFloatText('死亡...', fn.index);
-                                    }
-                                });
+                        if (grid.value[fIdx].hp <= 0) {
+                            if (grid.value[fIdx].color === 'black') {
+                                getNeighbors(fIdx).forEach(dead => { if(dead.type==='person') { grid.value[dead.index] = null; spawnFloatText('死亡', dead.index); } });
                             }
-                            grid.value[foods[0].index] = null; // Remove Food
+                            grid.value[fIdx] = null; 
                         }
                     }
 
-                    // 2. Work on Tasks
+                    // Work
                     if (canWork) {
                         const tasks = neighbors.filter(n => n.type === 'task');
-                        if (tasks.length > 0) {
-                            // Calculate Work Power
-                            let power = 0;
-                            // Black Task Logic: Only progress if a Black Person is adjacent
-                            // The Person logic just provides power, the Task logic validates it.
-                            // However, strictly: "隣接する人が数値をタスクに与える"
+                        tasks.forEach(t => {
+                            const task = grid.value[t.index];
+                            if (task.color === 'black') {
+                                // Must have black person adjacent to task
+                                const tNeighbors = getNeighbors(t.index);
+                                if (!tNeighbors.some(tn => tn.type === 'person' && tn.color === 'black')) return;
+                            }
+                            let pwr = 0;
+                            if (task.color === 'red') pwr = cell.str;
+                            else if (task.color === 'blue') pwr = cell.int;
+                            else pwr = cell.str + cell.int;
                             
-                            // Distribute power among tasks
-                            const powerShare = 1 / tasks.length;
-                            
-                            tasks.forEach(t => {
-                                const taskRef = grid.value[t.index];
-                                
-                                // Specific Logic: Black Task needs Black Person
-                                if (taskRef.color === 'black') {
-                                    // Check if task neighbors include a black person
-                                    const taskNeighbors = getNeighbors(t.index);
-                                    const hasBlackPerson = taskNeighbors.some(tn => tn.type === 'person' && tn.color === 'black');
-                                    if (!hasBlackPerson) return; // No progress
-                                }
-
-                                // Calculate contribution
-                                let contribution = 0;
-                                if (taskRef.color === 'red') contribution = cell.str;
-                                else if (taskRef.color === 'blue') contribution = cell.int;
-                                else if (taskRef.color === 'green') contribution = cell.str + cell.int;
-                                else if (taskRef.color === 'black') contribution = cell.str + cell.int;
-
-                                // Apply
-                                // Note: Rank DOES NOT multiply work speed, only reward.
-                                taskRef.hp += contribution * powerShare * dt;
-
-                                // Completion Check
-                                if (taskRef.hp >= taskRef.maxHp) {
-                                    taskRef.hp = 0;
-                                    // Reward Calculation: Base * Person Rank
-                                    const reward = Math.floor(taskRef.reward * cell.rank);
-                                    money.value += reward;
-                                    spawnFloatText(`+${reward}万`, t.index);
-                                }
-                            });
-                        }
+                            task.hp += (pwr / tasks.length) * dt;
+                            if (task.hp >= task.maxHp) {
+                                task.hp = 0;
+                                const rw = Math.floor(task.reward * cell.rank);
+                                money.value += rw;
+                                spawnFloatText(`+${rw}`, t.index);
+                            }
+                        });
                     }
                 }
             });
         };
 
-        // --- Interaction ---
+        // --- Inputs (Separated Logic) ---
 
+        // Shop Click (Select Only)
         const selectShopItem = (item) => {
             selectedShopItem.value = item;
-            selectedCellIndex.value = null; // Deselect board
+            selectedCellIndex.value = null; // Clear board selection
         };
 
-        const canAfford = (item) => {
-            return money.value >= item.cost;
+        // Board Touch/Click logic
+        const handleStart = (idx, x, y) => {
+            // Case 1: Placing Shop Item (Click/Tap)
+            if (selectedShopItem.value) {
+                // Wait for release to confirm placement (tap)
+                return;
+            }
+
+            // Case 2: Manipulating Board Item
+            if (grid.value[idx]) {
+                dragState.sourceIndex = idx;
+                dragState.item = { ...grid.value[idx] };
+                dragState.x = x;
+                dragState.y = y;
+                dragState.isDragging = false; // Will set true on move
+                dragState.startTime = Date.now();
+                selectedCellIndex.value = idx; // Select for details
+            } else {
+                selectedCellIndex.value = null;
+            }
         };
 
+        const handleMove = (x, y) => {
+            if (dragState.sourceIndex !== null) {
+                // Threshold to start dragging
+                if (!dragState.isDragging) {
+                    dragState.isDragging = true;
+                }
+                dragState.x = x;
+                dragState.y = y;
+            }
+        };
+
+        const handleEnd = (targetIdx) => {
+            // Shop Placement Logic (Tap)
+            if (selectedShopItem.value && targetIdx !== undefined) {
+                if (canAfford(selectedShopItem.value)) {
+                    money.value -= selectedShopItem.value.cost;
+                    // Refund if overwriting
+                    if (grid.value[targetIdx]) money.value += Math.floor(grid.value[targetIdx].cost * 0.5);
+                    // Place
+                    const newItem = JSON.parse(JSON.stringify(selectedShopItem.value));
+                    if (newItem.type === 'person') newItem.rank = 1.0;
+                    grid.value[targetIdx] = newItem;
+                }
+                // Optional: Clear selection after place? Let's keep it for rapid placement
+                // selectedShopItem.value = null; 
+                return;
+            }
+
+            // Board Drag Logic
+            if (dragState.isDragging && dragState.sourceIndex !== null && targetIdx !== undefined) {
+                // Swap
+                const src = dragState.sourceIndex;
+                const dst = targetIdx;
+                if (src !== dst) {
+                    const temp = grid.value[dst];
+                    grid.value[dst] = grid.value[src];
+                    grid.value[src] = temp;
+                    selectedCellIndex.value = dst;
+                }
+            }
+
+            // Reset Drag
+            dragState.isDragging = false;
+            dragState.sourceIndex = null;
+            dragState.item = null;
+        };
+
+        // Event Wrappers
+        const getIndexFromPos = (x, y) => {
+            if (!gridRef.value) return undefined;
+            const rect = gridRef.value.getBoundingClientRect();
+            if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) return undefined;
+            const cellW = rect.width / 4;
+            const cellH = rect.height / 4;
+            const c = Math.floor((x - rect.left) / cellW);
+            const r = Math.floor((y - rect.top) / cellH);
+            return r * 4 + c;
+        };
+
+        const handleMouseStart = (idx, e) => handleStart(idx, e.clientX, e.clientY);
+        const handleTouchStart = (idx, e) => handleStart(idx, e.touches[0].clientX, e.touches[0].clientY);
+        
+        // Global listeners for drag continuity
+        const handleGlobalMove = (e) => {
+            const x = e.touches ? e.touches[0].clientX : e.clientX;
+            const y = e.touches ? e.touches[0].clientY : e.clientY;
+            handleMove(x, y);
+        };
+        const handleGlobalEnd = (e) => {
+            // Mouseup doesn't give coords, but we don't need accurate coords for end unless we calculate drop target here
+            // For touch, we need changedTouches if we want last pos, but better to track last known pos
+            const x = dragState.x; 
+            const y = dragState.y;
+            const targetIdx = getIndexFromPos(x, y);
+            
+            // Special handling for Click (Tap) vs Drag End
+            // If dragging never started, and we released on a cell, it's a Tap.
+            // But handleEnd logic handles "isDragging" check.
+            
+            // Note: If we just tapped (no drag), targetIdx is the cell we tapped.
+            // We need to pass the cell index for Tap placement logic.
+            // Since we don't have event.target easily for global listener, 
+            // we rely on getIndexFromPos using last known coordinates.
+            
+            // Problem: If I tap, handleMove might not fire, so x/y are 0 or old.
+            // Fix: handleStart sets initial x/y.
+            
+            handleEnd(targetIdx);
+        };
+        
+        // Mouse global listeners are needed too if testing on PC
+        window.addEventListener('mousemove', handleGlobalMove);
+        window.addEventListener('mouseup', handleGlobalEnd);
+
+
+        // --- Utils ---
+        const canAfford = (item) => money.value >= item.cost;
         const deletePanel = (idx) => {
             if (grid.value[idx]) {
                 money.value += Math.floor(grid.value[idx].cost * 0.5);
@@ -522,219 +565,36 @@ createApp({
                 selectedCellIndex.value = null;
             }
         };
-
-        // Drag & Drop / Input Logic
-        const gridRef = ref(null);
-
-        const getGridIndexFromClientPos = (cx, cy) => {
-            if (!gridRef.value) return null;
-            const rect = gridRef.value.getBoundingClientRect();
-            // Check bounds
-            if (cx < rect.left || cx > rect.right || cy < rect.top || cy > rect.bottom) return null;
-            
-            // Calculate relative pos
-            const relX = cx - rect.left;
-            const relY = cy - rect.top;
-            const cellW = rect.width / 4;
-            const cellH = rect.height / 4;
-            
-            const col = Math.floor(relX / cellW);
-            const row = Math.floor(relY / cellH);
-            return row * 4 + col;
-        };
-
-        // Input Handlers (Unified Mouse/Touch)
-        const handleShopDragStart = (item, event) => {
-            if (!canAfford(item)) return;
-            selectShopItem(item); // Also select it
-            
-            // Prevent default drag for touch to handle manually
-            // event.preventDefault(); 
-            
-            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-
-            startDrag(item, null, clientX, clientY);
-        };
-
-        const handleInputStart = (index, event) => {
-            // If dragging from shop, ignore
-            if (dragState.isDragging) return;
-
-            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-            
-            // Logic:
-            // 1. If shop item selected -> Place on Tap (handled in End/Click, but we track press)
-            // 2. If board item -> Select it. Also Start Drag logic.
-
-            if (selectedShopItem.value) {
-                // Wait for release to place
-            } else if (grid.value[index]) {
-                selectedCellIndex.value = index;
-                startDrag(grid.value[index], index, clientX, clientY);
-            } else {
-                // Clicked empty space
-                selectedCellIndex.value = null;
-            }
-        };
-
-        const startDrag = (item, sourceIdx, x, y) => {
-            dragState.isDragging = true;
-            dragState.item = item; // Clone basics for visual
-            dragState.sourceIndex = sourceIdx;
-            dragState.x = x;
-            dragState.y = y;
-        };
-
-        const handleInputMove = (event) => {
-            if (!dragState.isDragging) return;
-            event.preventDefault(); // Stop scrolling
-            const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-            const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-            dragState.x = clientX;
-            dragState.y = clientY;
-        };
-
-        const handleInputEnd = (dropIndex) => {
-            if (dragState.isDragging) {
-                // Determine drop target based on coordinate (more reliable than event target for touch)
-                const targetIndex = getGridIndexFromClientPos(dragState.x, dragState.y);
-                
-                // DRAG LOGIC
-                if (targetIndex !== null && targetIndex >= 0 && targetIndex < 16) {
-                    if (dragState.sourceIndex === null) {
-                        // Shop -> Grid (Buy)
-                        buyAndPlace(dragState.item, targetIndex);
-                    } else {
-                        // Grid -> Grid (Move/Swap)
-                        if (dragState.sourceIndex !== targetIndex) {
-                            // Swap
-                            const temp = grid.value[targetIndex];
-                            grid.value[targetIndex] = grid.value[dragState.sourceIndex];
-                            grid.value[dragState.sourceIndex] = temp;
-                            selectedCellIndex.value = targetIndex; // Follow selection
-                        }
-                    }
-                }
-            } else {
-                // TAP LOGIC (No drag occurred or very short)
-                // If Shop Item Selected and we tapped a cell
-                if (selectedShopItem.value && dropIndex !== undefined) {
-                    buyAndPlace(selectedShopItem.value, dropIndex);
-                }
-            }
-            
-            // Reset
-            dragState.isDragging = false;
-            dragState.item = null;
-            dragState.sourceIndex = null;
-        };
-
-        const buyAndPlace = (itemTmpl, idx) => {
-            if (!canAfford(itemTmpl)) return;
-
-            // Deep clone new item
-            const newItem = JSON.parse(JSON.stringify(itemTmpl));
-            // Initialize dynamic properties
-            if (newItem.type === 'person') newItem.rank = 1.0;
-            
-            // Deduct money
-            money.value -= newItem.cost;
-            
-            // Place (Overwrite or Fill)
-            // Note: If swapping with existing panel via Shop placement, old is deleted (simple logic)
-            // Or we could say "Swap" but usually shop placement overwrites.
-            // Let's implement: If occupied, Sell old, then place New.
-            if (grid.value[idx]) {
-                money.value += Math.floor(grid.value[idx].cost * 0.5); // Refund half
-            }
-            
-            grid.value[idx] = newItem;
-        };
-
-        // --- Visuals ---
-        const displayTime = computed(() => {
-            if (gameState.value === 'setup') {
-                return Math.ceil(time.value);
-            }
-            const m = Math.floor(time.value / 60);
-            const s = Math.floor(time.value % 60);
-            return `${m}:${s.toString().padStart(2, '0')}`;
-        });
-
-        const currentCategoryItems = computed(() => {
-            return ITEMS[activeTab.value];
-        });
-
-        const formatMoney = (val) => {
-            return Math.floor(val).toLocaleString() + '万円';
-        };
-
-        const getPanelColorClass = (item) => {
-            if (!item) return '';
-            return `bg-${item.color}`;
-        };
-        const getColorDot = (color) => {
-            return `bg-${color === 'black' ? 'gray-900 border border-white' : (color + '-500')}`;
-        };
-
-        const getPanelIcon = (item) => item.icon;
-        const getPanelName = (item) => item.name;
-        const getSkillName = (item) => {
-            if(item.color === 'red') return "力UP";
-            if(item.color === 'blue') return "知UP";
-            if(item.color === 'green') return "省エネ";
-            if(item.color === 'black') return "昇進";
-        }
-
         const spawnFloatText = (text, idx) => {
-            // Simple visual effect
-            const row = Math.floor(idx / 4);
-            const col = idx % 4;
-            // Get approximate px position
-            if (!gridRef.value) return;
+            if(!gridRef.value) return;
             const rect = gridRef.value.children[idx].getBoundingClientRect();
-            
             floatingTexts.value.push({
-                id: Date.now() + Math.random(),
-                text: text,
-                x: rect.left + rect.width / 4,
-                y: rect.top,
+                id: Math.random(), text, x: rect.left + rect.width/4, y: rect.top
             });
-
-            // Cleanup
-            setTimeout(() => {
-                floatingTexts.value.shift();
-            }, 1000);
+            setTimeout(()=>floatingTexts.value.shift(), 800);
         };
-
+        const formatMoney = (v) => Math.floor(v).toLocaleString();
+        const getPanelColorClass = (i) => `bg-${i.color}`;
+        const getPanelIcon = (i) => i.icon;
+        const getPanelName = (i) => i.name;
+        const getColorDot = (c) => `bg-${c}-500`;
+        const getSkillName = (i) => ({red:'力UP',blue:'知UP',green:'省エネ',black:'昇進'}[i.color]);
+        const displayTime = computed(() => {
+            const t = Math.ceil(time.value);
+            const m = Math.floor(t/60), s = t%60;
+            return `${m}:${s.toString().padStart(2,'0')}`;
+        });
         const resetGame = () => {
-            grid.value = new Array(16).fill(null);
-            money.value = 100;
-            time.value = 10;
-            gameState.value = 'setup';
-            skillTimer = 0;
-            blackSkillTimer = 0;
-            lastTime = 0;
+            grid.value.fill(null); money.value=100; time.value=10; gameState.value='setup';
         };
 
-        onMounted(() => {
-            animationFrameId = requestAnimationFrame(gameLoop);
-        });
-        
-        onUnmounted(() => {
-            cancelAnimationFrame(animationFrameId);
-        });
+        onMounted(() => requestAnimationFrame(gameLoop));
 
         return {
-            gameState, time, displayTime, money, grid, 
-            activeTab, currentCategoryItems, selectedShopItem, selectedCellIndex,
-            dragState, gridRef, floatingTexts,
-            selectShopItem, canAfford, deletePanel,
-            handleInputStart, handleInputMove, handleInputEnd, handleShopDragStart,
-            formatMoney, getPanelColorClass, getPanelIcon, getPanelName, getColorDot, getSkillName,
-            resetGame
+            gameState, time, displayTime, money, grid, activeTab, currentCategoryItems: computed(() => ITEMS[activeTab.value]),
+            selectedShopItem, selectedCellIndex, dragState, floatingTexts, gridRef,
+            selectShopItem, canAfford, deletePanel, handleMouseStart, handleTouchStart, handleGlobalMove, handleGlobalEnd,
+            formatMoney, getPanelColorClass, getPanelIcon, getPanelName, getColorDot, getSkillName, resetGame
         };
     }
 }).mount('#app');
