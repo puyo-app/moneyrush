@@ -2,823 +2,721 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>１分で稼ぐ</title>
-    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
     <style>
+        /* --- Base & Reset --- */
         :root {
-            --bg-color: #2c3e50;
-            --text-color: #ecf0f1;
-            --accent-red: #e74c3c;
-            --accent-blue: #3498db;
-            --accent-green: #2ecc71;
-            --accent-black: #34495e;
-            --panel-bg: #34495e;
-            --grid-bg: #95a5a6;
+            --c-red: #FF6B6B;
+            --c-blue: #4ECDC4;
+            --c-green: #95E1D3;
+            --c-black: #2C3E50;
+            --c-bg: #f7f9fc;
+            --c-panel: #ffffff;
+            --c-text: #333;
+            --safe-bottom: env(safe-area-inset-bottom, 20px);
         }
-
-        * {
-            box-sizing: border-box;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: none; /* 全体のスクロール防止 */
-        }
-
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
         body {
-            margin: 0;
-            padding: 0;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            font-family: "Helvetica Neue", Arial, sans-serif;
-            height: 100dvh; /* ダイナミックビューポート */
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            margin: 0; padding: 0; width: 100%; height: 100vh; height: 100dvh;
+            overflow: hidden; background-color: var(--c-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            color: var(--c-text); touch-action: none;
         }
 
-        /* ヘッダー */
+        /* --- Layout --- */
+        #app {
+            display: flex; flex-direction: column; height: 95%; /* 指定の95%固定 */
+            max-width: 600px; margin: 0 auto; position: relative;
+        }
+        /* Fill bottom safe area */
+        .bottom-fill {
+            position: absolute; bottom: -100px; left: 0; right: 0; height: 100px;
+            background-color: var(--c-panel); z-index: -1;
+        }
+
+        /* --- Header --- */
         header {
-            height: 10%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 0 20px;
-            background: rgba(0,0,0,0.2);
-            font-weight: bold;
+            flex: 0 0 auto; padding: 10px 20px;
+            display: flex; justify-content: space-between; align-items: center;
+            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;
         }
+        .timer-box { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
+        .timer-box.setup { color: var(--c-red); }
+        .timer-box.main { color: var(--c-black); text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
+        .money-box { font-size: 1.2rem; font-weight: bold; color: #f1c40f; text-shadow: 1px 1px 0 #b7950b; }
 
-        .timer { font-size: 2rem; font-family: monospace; }
-        .timer.setup { color: var(--accent-red); }
-        .timer.active { color: white; text-shadow: 0 0 5px white; }
-        .money { font-size: 1.5rem; color: #f1c40f; }
-
-        /* メインボードエリア */
-        .board-area {
-            height: 50%; /* 画面の約半分 */
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 10px;
+        /* --- Main Board --- */
+        .board-container {
+            flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
+            padding: 10px; overflow: hidden; position: relative;
         }
-
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            grid-template-rows: repeat(4, 1fr);
-            gap: 4px;
-            width: 90vw;
-            height: 90vw; /* 正方形を維持 */
-            max-width: 400px;
-            max-height: 400px;
-            background-color: var(--grid-bg);
-            border: 2px solid #7f8c8d;
-            border-radius: 8px;
+        .grid {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+            width: 100%; aspect-ratio: 1 / 1; max-height: 100%;
         }
-
         .cell {
-            background-color: rgba(255,255,255,0.1);
-            position: relative;
-            border-radius: 4px;
-            overflow: hidden;
+            background: #e0e6ed; border-radius: 8px; position: relative;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.8rem; font-weight: bold; overflow: hidden;
+            transition: transform 0.1s; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
         }
-
-        /* パネル（アイテム） */
-        .item {
-            width: 100%;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-size: 0.8rem;
-            position: relative;
-            transition: transform 0.1s;
-        }
+        .cell.active { background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; }
+        .cell.selected-target { border: 2px solid var(--c-blue); }
+        .cell-content { width: 100%; height: 100%; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none;}
         
-        .item.dragging {
-            opacity: 0.5;
-            transform: scale(1.1);
-            z-index: 100;
-        }
-
-        .item-icon { font-size: 1.5rem; margin-bottom: 2px; }
-        .item-rank { font-size: 0.6rem; position: absolute; top: 2px; right: 2px; background: rgba(0,0,0,0.5); padding: 1px 3px; border-radius: 3px;}
+        /* Icons & Colors */
+        .icon { font-size: 1.8rem; line-height: 1; text-align: center; margin-top: 4px;}
+        .type-person { color: var(--c-black); } /* 人は枠色で区別 */
+        .bg-red { background-color: rgba(255, 107, 107, 0.15); border: 2px solid var(--c-red); color: var(--c-red); }
+        .bg-blue { background-color: rgba(78, 205, 196, 0.15); border: 2px solid var(--c-blue); color: var(--c-blue); }
+        .bg-green { background-color: rgba(149, 225, 211, 0.15); border: 2px solid var(--c-green); color: var(--c-green); }
+        .bg-black { background-color: rgba(44, 62, 80, 0.15); border: 2px solid var(--c-black); color: var(--c-black); }
         
-        /* プログレスバー */
-        .bar-container {
-            position: absolute;
-            bottom: 2px;
-            left: 2px;
-            right: 2px;
-            height: 4px;
-            background: rgba(0,0,0,0.3);
-            display: flex;
-            flex-direction: column;
-            gap: 1px;
-        }
-        .bar { height: 100%; width: 0%; transition: width 0.2s linear; }
-        .bar-food { background-color: #e67e22; height: 3px; margin-bottom: 1px;}
-        .bar-task { background-color: #2ecc71; height: 3px; }
+        /* Bars */
+        .bar-container { width: 100%; height: 6px; background: #ddd; border-radius: 3px; overflow: hidden; margin-top: auto;}
+        .bar-fill { height: 100%; transition: width 0.2s linear; }
+        .bar-food { background-color: #F39C12; }
+        .bar-task { background-color: #8E44AD; }
+        .stats-text { font-size: 0.6rem; text-align: center; white-space: nowrap; }
 
-        /* 操作パネルエリア (残り領域全て) */
-        .control-panel {
-            flex: 1;
-            background-color: var(--panel-bg);
-            display: flex;
-            flex-direction: column;
-            border-top: 2px solid #7f8c8d;
+        /* --- Panel --- */
+        .panel {
+            flex: 0 0 40%; background: var(--c-panel);
+            border-top: 1px solid #eee; display: flex; flex-direction: column;
+            padding-bottom: var(--safe-bottom);
         }
-
-        /* 情報・削除エリア */
+        /* Info Area (Top) */
         .info-area {
-            height: 25%;
-            padding: 5px 15px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(0,0,0,0.1);
-            font-size: 0.9rem;
+            flex: 0 0 50px; padding: 5px 15px; border-bottom: 1px solid #f0f0f0;
+            display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem;
         }
-        .info-text { flex: 1; font-size: 0.85rem; line-height: 1.2;}
-        .delete-btn {
-            background: var(--accent-red);
-            color: white;
-            border: none;
-            padding: 8px 16px;
-            border-radius: 4px;
-            font-weight: bold;
+        .info-detail { font-size: 0.8rem; color: #666; }
+        /* List Area (Middle) */
+        .list-area {
+            flex: 1; overflow-x: auto; display: flex; align-items: center; padding: 0 10px;
+            -webkit-overflow-scrolling: touch;
         }
-
-        /* アイテムリスト (横スクロール可能にしてもよいが、今回は固定) */
-        .item-list {
-            flex: 1;
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            padding: 5px;
-            overflow-x: auto;
+        .list-item {
+            flex: 0 0 70px; height: 70px; margin-right: 10px; border-radius: 8px; border: 2px solid #eee;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            font-size: 0.7rem; transition: all 0.2s;
         }
-
-        .shop-item {
-            width: 60px;
-            height: 60px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            border: 2px solid transparent;
-            position: relative;
-        }
-        .shop-item.selected { border-color: #f1c40f; background: rgba(255,255,255,0.2); }
-        .shop-item.disabled { opacity: 0.3; filter: grayscale(100%); }
-        .cost-label { font-size: 0.7rem; color: #f1c40f; margin-top: 2px; }
-
-        /* タブ */
-        .tabs {
-            height: 50px;
-            display: flex;
-            background: rgba(0,0,0,0.3);
+        .list-item.selected { border-color: var(--c-black); background: #f0f0f0; transform: translateY(-2px); }
+        .cost-badge { background: #333; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; margin-top: 2px;}
+        
+        /* Tab Area (Bottom) */
+        .tab-area {
+            flex: 0 0 40px; display: flex; border-top: 1px solid #eee;
         }
         .tab {
-            flex: 1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            color: #bdc3c7;
-            border-top: 3px solid transparent;
+            flex: 1; display: flex; align-items: center; justify-content: center;
+            font-size: 0.9rem; font-weight: bold; color: #999;
+            background: #fafafa; cursor: pointer;
         }
-        .tab.active {
-            color: white;
-            background: rgba(255,255,255,0.05);
-            border-top-color: #f1c40f;
-        }
+        .tab.active { background: #fff; color: var(--c-black); border-top: 3px solid var(--c-black); }
 
-        /* アイテムの色定義 */
-        .type-person.red { background: #FF6B6B; color: #fff; }
-        .type-person.blue { background: #4ECDC4; color: #333; }
-        .type-person.green { background: #95E1D3; color: #333; }
-        .type-person.black { background: #2C3E50; color: #fff; border: 1px solid #fff; }
-
-        .type-food.red { background: #ffcccc; color: #c0392b; }
-        .type-food.blue { background: #ccffff; color: #2980b9; }
-        .type-food.green { background: #d4efdf; color: #27ae60; }
-        .type-food.black { background: #555; color: #fff; }
-
-        .type-task.red { background: #e74c3c; border: 2px dashed #fff; }
-        .type-task.blue { background: #3498db; border: 2px dashed #fff; }
-        .type-task.green { background: #2ecc71; border: 2px dashed #fff; }
-        .type-task.black { background: #000; border: 2px double #f1c40f; color: #f1c40f; }
-
-        .type-skill.red { background: #c0392b; border: 2px solid gold; }
-        .type-skill.blue { background: #2980b9; border: 2px solid gold; }
-        .type-skill.green { background: #27ae60; border: 2px solid gold; }
-        .type-skill.black { background: #34495e; border: 2px solid gold; }
-
-        /* ポップアップ演出 */
-        .popup {
-            position: absolute;
-            color: #f1c40f;
-            font-weight: bold;
-            font-size: 1.2rem;
-            pointer-events: none;
-            animation: floatUp 1s ease-out forwards;
-            z-index: 999;
-            text-shadow: 1px 1px 0 #000;
-        }
-        @keyframes floatUp {
-            0% { transform: translateY(0); opacity: 1; }
-            100% { transform: translateY(-50px); opacity: 0; }
-        }
-
-        /* 結果画面 */
+        /* --- Modal & Overlays --- */
         .overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6); z-index: 100;
+            display: flex; align-items: center; justify-content: center;
         }
-        .result-score { font-size: 3rem; color: #f1c40f; margin: 20px 0; }
-        .btn-restart {
-            padding: 15px 40px;
-            font-size: 1.5rem;
-            background: #2ecc71;
-            color: white;
-            border: none;
-            border-radius: 50px;
+        .modal {
+            background: #fff; padding: 20px; border-radius: 12px; width: 85%;
+            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
         }
+        .modal h2 { margin: 0 0 10px; font-size: 1.5rem; }
+        .modal p { margin: 10px 0; color: #555; }
+        .btn {
+            background: var(--c-black); color: #fff; border: none; padding: 10px 20px;
+            border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px;
+        }
+        .btn-red { background: var(--c-red); }
+        .btn-close { position: absolute; top: 10px; right: 10px; background: #ddd; width: 30px; height: 30px; border-radius: 50%; border:none; font-weight:bold;}
 
+        /* Dragging Ghost */
+        .ghost {
+            position: fixed; width: 80px; height: 80px; background: rgba(255,255,255,0.9);
+            border: 2px solid var(--c-black); border-radius: 8px; pointer-events: none;
+            z-index: 999; display: flex; align-items: center; justify-content: center;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        }
     </style>
 </head>
 <body>
+    <div id="app">
+        <div class="bottom-fill"></div>
 
-<div id="app">
-    <header>
-        <div class="money">¥{{ Math.floor(money) }}万</div>
-        <div class="timer" :class="gameState === 'setup' ? 'setup' : 'active'">
-            {{ formattedTime }}
-        </div>
-    </header>
+        <header>
+            <div class="timer-box" :class="phase === 'setup' ? 'setup' : 'main'">
+                {{ formattedTime }}
+            </div>
+            <div class="money-box">
+                {{ money }}万円
+            </div>
+        </header>
 
-    <div class="board-area">
-        <div class="grid-container">
-            <div 
-                v-for="(item, index) in grid" 
-                :key="index" 
-                class="cell"
-                @touchstart="handleGridTouchStart(index, $event)"
-                @touchmove="handleGridTouchMove($event)"
-                @touchend="handleGridTouchEnd($event)"
-                @click="handleGridClick(index)"
-            >
-                <div v-if="item" :class="['item', getTypeClass(item)]" :style="getDragStyle(index)">
-                    <div class="item-icon">{{ getItemIcon(item) }}</div>
-                    <div v-if="item.type === 'person'" class="item-rank">Lv.{{ getRankLabel(item.rank) }}</div>
-                    <div v-if="item.type === 'person'" style="font-size:0.6rem">力{{item.power}} 知{{item.intel}}</div>
+        <div class="board-container" ref="boardContainer">
+            <div class="grid">
+                <div v-for="(cell, index) in grid" :key="index" 
+                     class="cell" 
+                     :class="[
+                        cell.content ? `bg-${cell.content.color}` : '',
+                        cell.content ? 'active' : '',
+                        dragTargetIndex === index ? 'selected-target' : ''
+                     ]"
+                     @touchstart.passive="handleTouchStart($event, index)"
+                     @touchmove="handleTouchMove($event)"
+                     @touchend="handleTouchEnd($event)"
+                     @click="handleCellClick(index)">
                     
-                    <div class="bar-container">
-                        <div v-if="item.type === 'food'" class="bar bar-food" :style="{width: (item.hp / item.maxHp * 100) + '%'}"></div>
-                        <div v-if="item.type === 'task'" class="bar bar-task" :style="{width: (item.progress / item.maxProgress * 100) + '%'}"></div>
+                    <div v-if="cell.content" class="cell-content">
+                        <div class="stats-text" v-if="cell.content.type === 'person'">
+                            Rank {{ cell.content.rank }}
+                        </div>
+                        <div class="icon">
+                            <span v-if="cell.content.type === 'person'">웃</span>
+                            <span v-else-if="cell.content.type === 'food'">🍖</span>
+                            <span v-else-if="cell.content.type === 'task'">📝</span>
+                            <span v-else-if="cell.content.type === 'skill'">★</span>
+                        </div>
+                        
+                        <div class="bar-container" v-if="cell.content.type === 'food'">
+                            <div class="bar-fill bar-food" :style="{ width: (cell.content.hp / cell.content.maxHp * 100) + '%' }"></div>
+                        </div>
+                        <div class="bar-container" v-if="cell.content.type === 'task'">
+                            <div class="bar-fill bar-task" :style="{ width: (cell.content.progress / cell.content.maxProgress * 100) + '%' }"></div>
+                        </div>
+                        
+                        <div class="stats-text">
+                            <span v-if="cell.content.type === 'person'">{{cell.content.str}}/{{cell.content.int}}</span>
+                            <span v-if="cell.content.type === 'skill'">{{ getSkillEffectText(cell.content) }}</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="control-panel">
-        
-        <div class="info-area">
-            <div class="info-text">
-                <span v-if="selectedGridItem">
-                    {{ getItemName(selectedGridItem) }}<br>
-                    <span style="font-size:0.75rem; color:#aaa;">{{ getItemDesc(selectedGridItem) }}</span>
-                </span>
-                <span v-else-if="shopSelection">
-                    コスト: {{ shopSelection.cost }}万円<br>
-                    <span style="font-size:0.75rem; color:#aaa;">{{ shopSelection.desc }}</span>
-                </span>
-                <span v-else>
-                    下部タブから選択 / 盤面ドラッグで移動
-                </span>
+        <div class="panel">
+            <div class="info-area">
+                <div v-if="selectedPaletteItem">
+                    <strong>{{ selectedPaletteItem.name }}</strong>
+                    <span class="cost-badge" style="margin-left:8px">{{ selectedPaletteItem.cost }}万円</span>
+                </div>
+                <div v-else style="color:#999">アイテムを選択してください</div>
+                <div v-if="selectedPaletteItem" class="info-detail">{{ selectedPaletteItem.desc }}</div>
             </div>
-            <button v-if="selectedGridItem" class="delete-btn" @click="deleteItem">売却</button>
-        </div>
 
-        <div class="item-list">
-            <div 
-                v-for="item in currentShopItems" 
-                :key="item.id"
-                class="shop-item"
-                :class="{ selected: shopSelection && shopSelection.id === item.id, disabled: money < item.cost }"
-                @click="selectShopItem(item)"
-            >
-                <div style="font-size:1.5rem">{{ item.icon }}</div>
-                <div class="cost-label">{{ item.cost }}</div>
+            <div class="list-area">
+                <div v-for="item in currentCategoryItems" :key="item.id"
+                     class="list-item"
+                     :class="[
+                        selectedPaletteItem && selectedPaletteItem.id === item.id ? 'selected' : '',
+                        `bg-${item.color}`
+                     ]"
+                     @click="selectPaletteItem(item)">
+                    <span style="font-size:1.2rem">
+                        {{ item.icon }}
+                    </span>
+                    <span class="cost-badge">{{ item.cost }}</span>
+                </div>
+            </div>
+
+            <div class="tab-area">
+                <div class="tab" :class="{ active: activeTab === 'person' }" @click="activeTab = 'person'">人</div>
+                <div class="tab" :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">食物</div>
+                <div class="tab" :class="{ active: activeTab === 'task' }" @click="activeTab = 'task'">タスク</div>
+                <div class="tab" :class="{ active: activeTab === 'skill' }" @click="activeTab = 'skill'">スキル</div>
             </div>
         </div>
 
-        <div class="tabs">
-            <div class="tab" :class="{active: currentTab==='person'}" @click="setTab('person')">人</div>
-            <div class="tab" :class="{active: currentTab==='food'}" @click="setTab('food')">食物</div>
-            <div class="tab" :class="{active: currentTab==='task'}" @click="setTab('task')">仕事</div>
-            <div class="tab" :class="{active: currentTab==='skill'}" @click="setTab('skill')">スキル</div>
+        <div v-if="showDetailModal" class="overlay" @click.self="closeDetailModal">
+            <div class="modal">
+                <button class="btn-close" @click="closeDetailModal">×</button>
+                <h2>{{ getModalTitle() }}</h2>
+                <p>{{ getModalDesc() }}</p>
+                <div v-if="grid[selectedGridIndex].content.type === 'person'">
+                    <p>現在のRank: {{ grid[selectedGridIndex].content.rank }}</p>
+                </div>
+                <button class="btn btn-red" @click="deleteItem">削除する (返金なし)</button>
+            </div>
+        </div>
+
+        <div v-if="phase === 'result'" class="overlay">
+            <div class="modal">
+                <h2>終了！</h2>
+                <p>最終所持金</p>
+                <div style="font-size: 2.5rem; font-weight:800; color:#f1c40f; margin: 10px 0;">
+                    {{ money }}<span style="font-size:1rem; color:#333">万円</span>
+                </div>
+                <button class="btn" @click="resetGame">もう一度遊ぶ</button>
+            </div>
+        </div>
+
+        <div v-if="isDragging" class="ghost" :style="{ top: ghostY + 'px', left: ghostX + 'px' }">
+            <span style="font-size:2rem">{{ draggingContent?.icon }}</span>
         </div>
     </div>
 
-    <div v-for="pop in popups" :key="pop.id" class="popup" :style="{top: pop.y + 'px', left: pop.x + 'px'}">
-        {{ pop.text }}
-    </div>
+    <script>
+        const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
 
-    <div v-if="gameState === 'result'" class="overlay">
-        <h1>TIME UP!</h1>
-        <div class="result-score">¥{{ Math.floor(money) }}万</div>
-        <button class="btn-restart" @click="resetGame">もう一度</button>
-    </div>
-</div>
-
-<script>
-new Vue({
-    el: '#app',
-    data: {
-        gameState: 'setup', // setup, playing, result
-        timeRemaining: 10,
-        money: 100,
-        grid: Array(16).fill(null),
-        
-        currentTab: 'person',
-        shopSelection: null, // 購入選択中のアイテムデータ
-        selectedGridIndex: null, // 盤面で選択中のインデックス（詳細表示・削除用）
-
-        // ドラッグ操作用
-        dragStartIndex: null,
-        dragCurrentIndex: null,
-        isDragging: false,
-        dragOffset: { x: 0, y: 0 },
-
-        lastFrameTime: 0,
-        popups: [],
-        popupIdCounter: 0,
-
-        // 定数データ定義
-        shopItems: {
+        // Data Definitions
+        const ITEM_DEFINITIONS = {
             person: [
-                { id: 'p_red', type: 'person', sub: 'red', icon: '💪', cost: 30, power: 15, intel: 5, rank: 1, desc: '肉体派 (力15/知5)' },
-                { id: 'p_blue', type: 'person', sub: 'blue', icon: '🧠', cost: 30, power: 5, intel: 15, rank: 1, desc: '頭脳派 (力5/知15)' },
-                { id: 'p_green', type: 'person', sub: 'green', icon: '⚖️', cost: 30, power: 10, intel: 10, rank: 1, desc: 'バランス (力10/知10)' },
-                { id: 'p_black', type: 'person', sub: 'black', icon: '🕴️', cost: 30, power: 5, intel: 5, rank: 1, desc: '特殊 (力5/知5) 黒案件に必須' },
+                { id: 'p_red', name: '肉体派', color: 'red', cost: 30, type: 'person', icon: '웃', str: 15, int: 5, desc: '力15 / 知5' },
+                { id: 'p_blue', name: '頭脳派', color: 'blue', cost: 30, type: 'person', icon: '웃', str: 5, int: 15, desc: '力5 / 知15' },
+                { id: 'p_green', name: 'バランス', color: 'green', cost: 30, type: 'person', icon: '웃', str: 10, int: 10, desc: '力10 / 知10' },
+                { id: 'p_black', name: '低スペック', color: 'black', cost: 30, type: 'person', icon: '웃', str: 5, int: 5, desc: '力5 / 知5 (黒案件に必須)' },
             ],
             food: [
-                { id: 'f_red', type: 'food', sub: 'red', icon: '🍖', cost: 5, hp: 200, desc: '肉 (赤の好物)' },
-                { id: 'f_blue', type: 'food', sub: 'blue', icon: '🐟', cost: 5, hp: 200, desc: '魚 (青の好物)' },
-                { id: 'f_green', type: 'food', sub: 'green', icon: '🥗', cost: 10, hp: 200, desc: '野菜 (全員好物)' },
-                { id: 'f_black', type: 'food', sub: 'black', icon: '🌑', cost: 0, hp: 200, desc: '謎の肉 (0円/枯渇で周囲死亡)' },
+                { id: 'f_red', name: '赤い肉', color: 'red', cost: 5, type: 'food', icon: '🍖', hp: 200, desc: '赤の好物 (他は消費倍)' },
+                { id: 'f_blue', name: '青い魚', color: 'blue', cost: 5, type: 'food', icon: '🍖', hp: 200, desc: '青の好物 (他は消費倍)' },
+                { id: 'f_green', name: '野菜', color: 'green', cost: 10, type: 'food', icon: '🍖', hp: 200, desc: '誰でも通常消費' },
+                { id: 'f_black', name: '謎の肉', color: 'black', cost: 0, type: 'food', icon: '🍖', hp: 200, desc: '無くなると周囲が死ぬ' },
             ],
             task: [
-                { id: 't_red', type: 'task', sub: 'red', icon: '🧱', cost: 0, progress: 0, maxProgress: 400, desc: '肉体労働 (報酬小)' },
-                { id: 't_blue', type: 'task', sub: 'blue', icon: '💻', cost: 0, progress: 0, maxProgress: 400, desc: '頭脳労働 (報酬小)' },
-                { id: 't_green', type: 'task', sub: 'green', icon: '🤝', cost: 0, progress: 0, maxProgress: 400, desc: '協力案件 (報酬中)' },
-                { id: 't_black', type: 'task', sub: 'black', icon: '🏰', cost: 0, progress: 0, maxProgress: 500, desc: '巨大案件 (報酬特大/黒人必須)' },
+                { id: 't_red', name: '力仕事', color: 'red', cost: 0, type: 'task', icon: '📝', max: 200, req: 'str', reward: 20, desc: '必要：力 / 報酬20万' },
+                { id: 't_blue', name: '事務', color: 'blue', cost: 0, type: 'task', icon: '📝', max: 200, req: 'int', reward: 20, desc: '必要：知 / 報酬20万' },
+                { id: 't_green', name: '総合職', color: 'green', cost: 0, type: 'task', icon: '📝', max: 300, req: 'both', reward: 20, desc: '必要：力+知 / 報酬20万' },
+                { id: 't_black', name: '巨大案件', color: 'black', cost: 0, type: 'task', icon: '📝', max: 500, req: 'both', reward: 100, desc: '黒の人必須 / 報酬100万' },
             ],
             skill: [
-                { id: 's_red', type: 'skill', sub: 'red', icon: '🏋️', cost: 30, desc: '隣接の力+1/秒' },
-                { id: 's_blue', type: 'skill', sub: 'blue', icon: '📚', cost: 30, desc: '隣接の知+1/秒' },
-                { id: 's_green', type: 'skill', sub: 'green', icon: '🌿', cost: 30, desc: '隣接の食費半減' },
-                { id: 's_black', type: 'skill', sub: 'black', icon: '📜', cost: 30, desc: '10秒毎に隣接昇進' },
+                { id: 's_red', name: '筋トレ', color: 'red', cost: 30, type: 'skill', icon: '★', desc: '周囲の力+1' },
+                { id: 's_blue', name: '勉強会', color: 'blue', cost: 30, type: 'skill', icon: '★', desc: '周囲の知+1' },
+                { id: 's_green', name: '節約術', color: 'green', cost: 30, type: 'skill', icon: '★', desc: '周囲の食費半減' },
+                { id: 's_black', name: '昇進辞令', color: 'black', cost: 30, type: 'skill', icon: '★', desc: '10秒毎に周囲を昇進' },
             ]
-        }
-    },
-    computed: {
-        formattedTime() {
-            if (this.gameState === 'setup') return Math.ceil(this.timeRemaining);
-            const min = Math.floor(this.timeRemaining / 60);
-            const sec = Math.floor(this.timeRemaining % 60);
-            return `${min}:${sec.toString().padStart(2, '0')}`;
-        },
-        currentShopItems() {
-            return this.shopItems[this.currentTab];
-        },
-        selectedGridItem() {
-            return this.selectedGridIndex !== null ? this.grid[this.selectedGridIndex] : null;
-        }
-    },
-    methods: {
-        setTab(tab) {
-            this.currentTab = tab;
-            this.shopSelection = null;
-            this.selectedGridIndex = null;
-        },
-        selectShopItem(item) {
-            this.shopSelection = item;
-            this.selectedGridIndex = null;
-        },
-        
-        // --- Grid Interaction (Drag & Click) ---
-        handleGridTouchStart(index, event) {
-            // 盤面にアイテムがない場合はドラッグ開始しない
-            if (!this.grid[index]) return;
-            
-            this.isDragging = true;
-            this.dragStartIndex = index;
-            
-            // ドラッグ視覚効果のための座標取得などは今回は簡易化のため省略
-            // 代わりに、dragStartIndexのアイテムを半透明にするなどのクラス制御のみ行う
-        },
-        handleGridTouchMove(event) {
-            if (!this.isDragging) return;
-            // 実際の指の位置にある要素を取得するロジックが必要だが、
-            // VueのイベントバブリングとDOM操作が混在すると複雑になるため、
-            // 「ドロップ時に指の下にある要素」をTouchEndで判定する方式をとる
-            event.preventDefault(); // スクロール防止
-        },
-        handleGridTouchEnd(event) {
-            if (!this.isDragging) return;
-            this.isDragging = false;
+        };
 
-            // タッチ終了位置にある要素を取得
-            const touch = event.changedTouches[0];
-            const target = document.elementFromPoint(touch.clientX, touch.clientY);
-            const cell = target ? target.closest('.cell') : null;
-
-            if (cell) {
-                // DOM要素からVueのindexを逆算する（簡易的な方法として、Gridの子要素のindexを取得）
-                const children = Array.from(cell.parentElement.children);
-                const dropIndex = children.indexOf(cell);
-
-                if (dropIndex !== -1 && dropIndex !== this.dragStartIndex) {
-                    this.swapGridItems(this.dragStartIndex, dropIndex);
-                    // 移動後は選択解除
-                    this.selectedGridIndex = null;
-                    return; // スワップしたらClick処理を発火させない
-                }
-            }
-        },
-        // タップ操作（配置 または 選択）
-        handleGridClick(index) {
-            // 配置モード（ショップアイテム選択中）
-            if (this.shopSelection) {
-                if (this.money >= this.shopSelection.cost) {
-                    this.money -= this.shopSelection.cost;
-                    // 新規アイテム生成
-                    const newItem = JSON.parse(JSON.stringify(this.shopSelection));
-                    // 初期化処理
-                    if (newItem.type === 'food') newItem.maxHp = newItem.hp;
-                    if (newItem.type === 'skill' && newItem.sub === 'black') newItem.timer = 0;
-                    
-                    this.$set(this.grid, index, newItem);
-                    // 連続配置しやすくするため選択解除しない、金が足りなくなったら解除などの処理は任意
-                }
-                return;
-            }
-
-            // 選択モード（盤面のアイテムを選択）
-            if (this.grid[index]) {
-                this.selectedGridIndex = index;
-                this.shopSelection = null; // ショップ選択を解除
-            } else {
-                this.selectedGridIndex = null;
-            }
-        },
-
-        swapGridItems(idx1, idx2) {
-            const temp = this.grid[idx1];
-            this.$set(this.grid, idx1, this.grid[idx2]);
-            this.$set(this.grid, idx2, temp);
-        },
-
-        deleteItem() {
-            if (this.selectedGridIndex !== null) {
-                // 売却額（簡易的にコストの半額）
-                // const refund = Math.floor(this.grid[this.selectedGridIndex].cost / 2);
-                // this.money += refund;
-                // 今回の仕様では「売却/削除」とあるが、返金についての明記はないため、削除のみとする。
-                // もし返金ありなら上記コメントアウトを解除
+        createApp({
+            setup() {
+                // Game State
+                const phase = ref('setup'); // setup, playing, result
+                const money = ref(100);
+                const timeLeft = ref(10);
+                const grid = ref(Array(16).fill().map(() => ({ content: null })));
+                const activeTab = ref('person');
+                const selectedPaletteItem = ref(null);
                 
-                this.$set(this.grid, this.selectedGridIndex, null);
-                this.selectedGridIndex = null;
-            }
-        },
+                // Modal & Interaction
+                const showDetailModal = ref(false);
+                const selectedGridIndex = ref(null);
+                const boardContainer = ref(null);
 
-        // --- Game Logic ---
-        gameLoop(timestamp) {
-            if (this.gameState === 'result') return;
+                // Dragging State
+                const isDragging = ref(false);
+                const dragStartIndex = ref(null);
+                const dragTargetIndex = ref(null); // Highlight drop target
+                const ghostX = ref(0);
+                const ghostY = ref(0);
+                const draggingContent = ref(null);
 
-            const dt = (timestamp - this.lastFrameTime) / 1000;
-            this.lastFrameTime = timestamp;
+                // Timer Loop
+                let timerInterval = null;
+                let tickCount = 0; // For 10s checks
 
-            if (this.gameState === 'setup') {
-                this.timeRemaining -= dt;
-                if (this.timeRemaining <= 0) {
-                    this.gameState = 'playing';
-                    this.timeRemaining = 60;
-                }
-            } else if (this.gameState === 'playing') {
-                this.timeRemaining -= dt;
-                if (this.timeRemaining <= 0) {
-                    this.finishGame();
-                } else {
-                    this.updateGameLogic(dt);
-                }
-            }
+                const currentCategoryItems = computed(() => ITEM_DEFINITIONS[activeTab.value]);
 
-            requestAnimationFrame(this.gameLoop);
-        },
-
-        updateGameLogic(dt) {
-            // スキル効果の適用（パッシブ＆アクティブ）
-            this.grid.forEach((skill, i) => {
-                if (!skill || skill.type !== 'skill') return;
-                
-                const neighbors = this.getNeighbors(i);
-                
-                // 黒スキル（昇進）
-                if (skill.sub === 'black') {
-                    skill.timer += dt;
-                    if (skill.timer >= 10) {
-                        skill.timer = 0;
-                        neighbors.forEach(nIdx => {
-                            const p = this.grid[nIdx];
-                            if (p && p.type === 'person' && p.rank < 2.0) {
-                                // ランクアップ（0.1刻みなどで最大2.0まで）
-                                // 仕様では「1段階上げる」とあるので、役職テーブルを作るか単純に倍率を上げるか
-                                // ここでは +0.2 ずつ、最大 2.0 とする
-                                p.rank = Math.min(2.0, p.rank + 0.2);
-                                this.showPopup(nIdx, "昇進!", "#f1c40f");
-                            }
-                        });
-                    }
-                }
-                
-                // パッシブスキル（毎秒ステータス強化）
-                neighbors.forEach(nIdx => {
-                    const p = this.grid[nIdx];
-                    if (p && p.type === 'person') {
-                        if (skill.sub === 'red') p.power += 1 * dt; // 力強化
-                        if (skill.sub === 'blue') p.intel += 1 * dt; // 知強化
-                    }
-                });
-            });
-
-            // 人の行動（食事＆労働）
-            // 処理順序による有利不利を防ぐため、一度計算用データを保持するのが理想だが、
-            // 今回はループ内で順次処理する（仕様にある「切り上げ」でプレイヤー有利にする）
-            
-            this.grid.forEach((person, idx) => {
-                if (!person || person.type !== 'person') return;
-
-                const neighbors = this.getNeighbors(idx);
-                
-                // 1. 食事処理
-                // 緑スキル（観葉植物）があるかチェック
-                let isDiet = false;
-                neighbors.forEach(nIdx => {
-                    if (this.grid[nIdx] && this.grid[nIdx].type === 'skill' && this.grid[nIdx].sub === 'green') {
-                        isDiet = true;
-                    }
+                const formattedTime = computed(() => {
+                    if (phase.value === 'setup') return `START IN ${timeLeft.value}`;
+                    if (phase.value === 'result') return "FINISH";
+                    const m = Math.floor(timeLeft.value / 60);
+                    const s = timeLeft.value % 60;
+                    return `${m}:${s.toString().padStart(2, '0')}`;
                 });
 
-                // 食べる食料を探す（好物優先）
-                let targetFoodIdx = -1;
-                let foodPriority = -1; // 0:なし, 1:通常, 2:好物
-                
-                neighbors.forEach(nIdx => {
-                    const f = this.grid[nIdx];
-                    if (f && f.type === 'food') {
-                        let prio = 1;
-                        // 色一致 or 緑(スーパーフード) or 緑スキル効果
-                        if (f.sub === person.sub || f.sub === 'green' || isDiet) prio = 2;
-                        
-                        if (prio > foodPriority) {
-                            foodPriority = prio;
-                            targetFoodIdx = nIdx;
+                // --- Game Logic Core ---
+
+                const getNeighbors = (idx) => {
+                    const row = Math.floor(idx / 4);
+                    const col = idx % 4;
+                    const neighbors = [];
+                    // Up, Down, Left, Right
+                    if (row > 0) neighbors.push(idx - 4);
+                    if (row < 3) neighbors.push(idx + 4);
+                    if (col > 0) neighbors.push(idx - 1);
+                    if (col < 3) neighbors.push(idx + 1);
+                    return neighbors;
+                };
+
+                const startGame = () => {
+                    // Setup Phase Countdown
+                    timerInterval = setInterval(() => {
+                        timeLeft.value--;
+                        if (timeLeft.value <= 0) {
+                            clearInterval(timerInterval);
+                            phase.value = 'playing';
+                            timeLeft.value = 60;
+                            tickCount = 0;
+                            startMainLoop();
                         }
-                    }
-                });
+                    }, 1000);
+                };
 
-                let fed = false;
-                if (targetFoodIdx !== -1) {
-                    const food = this.grid[targetFoodIdx];
-                    // 消費量: 好物/Diet=10, その他=20, 黒=10
-                    let consumption = 20;
-                    if (foodPriority === 2 || food.sub === 'black') consumption = 10;
-                    
-                    // デルタタイム適用
-                    const consumeAmount = consumption * dt;
-                    
-                    // HPが残っていれば働く（0になる瞬間まで働く）
-                    if (food.hp > 0) {
-                        food.hp -= consumeAmount;
-                        fed = true;
-
-                        // 黒食物の死亡ロジック
-                        if (food.sub === 'black' && food.hp <= 0) {
-                            food.hp = 0;
-                            this.triggerBlackFoodDeath(targetFoodIdx);
-                        } else if (food.hp <= 0) {
-                             // 通常食物は0になっても消えない（補充待ち）
-                             food.hp = 0;
-                             // ただし、もし仕様で「食い尽くしたら消える」ならここでnullにするが、
-                             // 「食物がなくなる秒については...」の文脈から残しておいて補充or再配置待機と解釈
-                             // ユーザーが手動で消せるので、ここでは0で留める
+                const startMainLoop = () => {
+                    timerInterval = setInterval(() => {
+                        processGameTick();
+                        timeLeft.value--;
+                        if (timeLeft.value <= 0) {
+                            clearInterval(timerInterval);
+                            phase.value = 'result';
                         }
-                    }
-                }
+                    }, 1000);
+                };
 
-                // 2. 労働処理（食べていれば）
-                if (fed) {
-                    // 隣接タスクを探す
-                    const taskIndices = [];
-                    neighbors.forEach(nIdx => {
-                        const t = this.grid[nIdx];
-                        if (t && t.type === 'task') {
-                            // 黒タスク制限: 黒人がいないと進まない
-                            // 「黒人以外が黒タスクに隣接していても進まない」のか
-                            // 「黒タスクには黒人が1人でも隣接していれば、他色も作業できる」のか
-                            // 仕様：「黒人が隣接していないと作業が進まない」
-                            // -> 単純化: 黒タスクは、実行者（自分）が黒人の場合のみ進める、あるいは
-                            //    隣接に黒人がいるかチェックが必要。
-                            //    ここでは「自分が黒人である」または「隣接に他の黒人がいる」場合に許可するロジックにする
-                            
-                            if (t.sub === 'black') {
-                                // 自分が黒人ならOK
-                                let canWork = (person.sub === 'black');
-                                if (!canWork) {
-                                    // 周囲に黒人がいるかチェック（タスクの周囲）
-                                    const taskNeighbors = this.getNeighbors(nIdx);
-                                    for (let tn of taskNeighbors) {
-                                        if (this.grid[tn] && this.grid[tn].type === 'person' && this.grid[tn].sub === 'black') {
-                                            canWork = true;
-                                            break;
-                                        }
+                const processGameTick = () => {
+                    tickCount++;
+                    // 1. Calculate Buffs & Reset Temp Stats
+                    // Create a snapshot of buffs to apply
+                    const buffs = Array(16).fill().map(() => ({ str: 0, int: 0, saveFood: false }));
+                    
+                    grid.value.forEach((cell, idx) => {
+                        if (cell.content && cell.content.type === 'skill') {
+                            const neighbors = getNeighbors(idx);
+                            neighbors.forEach(nIdx => {
+                                if (cell.content.id === 's_red') buffs[nIdx].str += 1;
+                                if (cell.content.id === 's_blue') buffs[nIdx].int += 1;
+                                if (cell.content.id === 's_green') buffs[nIdx].saveFood = true;
+                                if (cell.content.id === 's_black' && tickCount % 10 === 0) {
+                                    // Promotion Event
+                                    if (grid.value[nIdx].content && grid.value[nIdx].content.type === 'person') {
+                                        grid.value[nIdx].content.rank++;
                                     }
                                 }
-                                if (canWork) taskIndices.push(nIdx);
-                            } else {
-                                taskIndices.push(nIdx);
+                            });
+                        }
+                    });
+
+                    // 2. Logic for Persons (Consume & Work)
+                    grid.value.forEach((cell, idx) => {
+                        if (!cell.content || cell.content.type !== 'person') return;
+                        
+                        const p = cell.content;
+                        // Apply Buffs
+                        const currentStr = p.str + buffs[idx].str;
+                        const currentInt = p.int + buffs[idx].int;
+                        const isDiet = buffs[idx].saveFood;
+
+                        // --- Eat Food ---
+                        const neighbors = getNeighbors(idx);
+                        let bestFoodIdx = -1;
+                        let minConsumption = 999;
+
+                        // Find best food
+                        neighbors.forEach(nIdx => {
+                            const target = grid.value[nIdx].content;
+                            if (target && target.type === 'food') {
+                                let consumption = 20;
+                                if (p.color === target.color) consumption = 10;
+                                if (target.color === 'green' || target.color === 'black') consumption = 10;
+                                if (isDiet) consumption = Math.ceil(consumption / 2);
+
+                                // Prioritize lower consumption, then just pick first
+                                if (consumption < minConsumption) {
+                                    minConsumption = consumption;
+                                    bestFoodIdx = nIdx;
+                                } else if (consumption === minConsumption && bestFoodIdx === -1) {
+                                    bestFoodIdx = nIdx;
+                                }
+                            }
+                        });
+
+                        // Consume
+                        if (bestFoodIdx !== -1) {
+                            grid.value[bestFoodIdx].content.hp -= minConsumption;
+                            // Check empty later
+                        }
+
+                        // --- Do Tasks ---
+                        const adjacentTasks = [];
+                        let hasBlackPerson = (p.id === 'p_black'); // Am I black?
+
+                        neighbors.forEach(nIdx => {
+                            const t = grid.value[nIdx].content;
+                            if (t && t.type === 'task') {
+                                // Black Task check
+                                if (t.id === 't_black') {
+                                    // Need black person neighbor. 
+                                    // Current person is adjacent to task.
+                                    // We need to check if ANY neighbor of the TASK is a black person.
+                                    // Optimization: Just check if *this* person is black, or if other neighbors of task are black.
+                                    // Actually, simpler: The task processes its own requirement? 
+                                    // No, the person PUSHES progress.
+                                    // If task is black, only push if *I* am black OR a black person is next to task.
+                                    // Constraint: "If black person not adjacent, task does not progress".
+                                    // So even if I am Red, I can push Black Task IF a Black Person is also there.
+                                    const taskNeighbors = getNeighbors(nIdx);
+                                    const blackPresent = taskNeighbors.some(tn => 
+                                        grid.value[tn].content && grid.value[tn].content.id === 'p_black'
+                                    );
+                                    if (!blackPresent) return; 
+                                }
+                                adjacentTasks.push(nIdx);
+                            }
+                        });
+
+                        if (adjacentTasks.length > 0) {
+                            // Calculate total power
+                            let power = 0;
+                            // Need to know requirement per task. Logic says "Adjacent person capability advances gauge".
+                            // If multiple tasks, "Force 11 to 2 tasks -> 6 and 6". 
+                            // This implies we calculate power PER TASK type? No, usually power is generic.
+                            // But tasks require STR or INT.
+                            // Interpretation: Apply (STR or INT or BOTH) to EACH task, divided by count?
+                            // Let's assume split logic applies to the *effort*.
+                            // But the STAT used depends on the TASK.
+                            // Implementation:
+                            // 1. Calculate potential power for each task.
+                            // 2. Sum them? No, split the "Action".
+                            // Actually, the simplest interpretation of "Force 11 to 2 tasks -> 6 and 6" is:
+                            // The person exerts effort on ALL adjacent tasks simultaneously, but intensity is split?
+                            // Or is it full power to all? 
+                            // "Force 11 to 2 tasks -> 6 and 6" means Force is a pool.
+                            // So: Pool = Stat. Split Pool by N tasks. Ceiling.
+                            
+                            const count = adjacentTasks.length;
+                            adjacentTasks.forEach(tIdx => {
+                                const task = grid.value[tIdx].content;
+                                let statVal = 0;
+                                if (task.req === 'str') statVal = currentStr;
+                                else if (task.req === 'int') statVal = currentInt;
+                                else statVal = currentStr + currentInt; // Both
+
+                                const amount = Math.ceil(statVal / count);
+                                grid.value[tIdx].content.progress += amount;
+                            });
+                        }
+                    });
+
+                    // 3. Post-Process (Food Death / Task Complete)
+                    // Food Death & Black Explosion
+                    grid.value.forEach((cell, idx) => {
+                        if (cell.content && cell.content.type === 'food') {
+                            if (cell.content.hp <= 0) {
+                                // Explosion?
+                                if (cell.content.id === 'f_black') {
+                                    const neighbors = getNeighbors(idx);
+                                    neighbors.forEach(nIdx => {
+                                        if (grid.value[nIdx].content && grid.value[nIdx].content.type === 'person') {
+                                            grid.value[nIdx].content = null; // DEAD
+                                        }
+                                    });
+                                }
+                                cell.content = null; // Remove food
                             }
                         }
                     });
 
-                    if (taskIndices.length > 0) {
-                        // 能力計算
-                        // 黒タスクも考慮して、タスクごとに適合能力を計算すべきだが、
-                        // 仕様：「力11を2箇所なら6と6」→分配前に切り上げ
-                        // タスクの種類に応じたパワーを算出
-                        
-                        taskIndices.forEach(tIdx => {
-                            const task = this.grid[tIdx];
-                            let rawPower = 0;
-                            if (task.sub === 'red') rawPower = person.power;
-                            else if (task.sub === 'blue') rawPower = person.intel;
-                            else if (task.sub === 'green' || task.sub === 'black') rawPower = person.power + person.intel;
-
-                            // 分配（切り上げ）
-                            // 整数計算: (能力 / タスク数) の切り上げ
-                            // 秒間進行値なので dt を掛けるが、
-                            // ロジック指定「整数で切り上げ」は秒間の数値を指すと解釈
-                            
-                            const workPerSec = Math.ceil(rawPower / taskIndices.length);
-                            
-                            // 進行
-                            task.progress += workPerSec * dt;
-                            
-                            // 完了判定
-                            if (task.progress >= task.maxProgress) {
-                                this.completeTask(tIdx, task, person.rank);
+                    // Task Completion
+                    grid.value.forEach((cell, idx) => {
+                        if (cell.content && cell.content.type === 'task') {
+                            if (cell.content.progress >= cell.content.maxProgress) {
+                                // Reward
+                                // We need rank of WHO? 
+                                // "Reward x Rank". Which rank?
+                                // Usually in these games, the task stores who worked on it? Too complex.
+                                // Re-read: "Reward: 200k x Rank". 
+                                // "Person Rank... affects Task Reward multiplier".
+                                // This implies the Person's Rank modifies the reward generated by their work?
+                                // OR: The Task checks adjacent people's rank?
+                                // Let's simplify: Average Rank of adjacent people? Max Rank?
+                                // Or maybe the money is added *during* work? No, "Completion".
+                                // Let's take the MAX Rank of any adjacent person contributing.
+                                const neighbors = getNeighbors(idx);
+                                let maxRank = 1;
+                                neighbors.forEach(nIdx => {
+                                    if (grid.value[nIdx].content && grid.value[nIdx].content.type === 'person') {
+                                        if (grid.value[nIdx].content.rank > maxRank) maxRank = grid.value[nIdx].content.rank;
+                                    }
+                                });
+                                
+                                money.value += Math.ceil(cell.content.reward * maxRank);
+                                cell.content.progress = 0; // Reset
                             }
-                        });
+                        }
+                    });
+                };
+
+                // --- Interaction Handlers ---
+
+                const selectPaletteItem = (item) => {
+                    selectedPaletteItem.value = item;
+                };
+
+                const handleCellClick = (index) => {
+                    // Place Item
+                    if (selectedPaletteItem.value && !grid.value[index].content) {
+                        if (money.value >= selectedPaletteItem.value.cost) {
+                            money.value -= selectedPaletteItem.value.cost;
+                            // Clone object
+                            const newItem = JSON.parse(JSON.stringify(selectedPaletteItem.value));
+                            // Init dynamic props
+                            if (newItem.type === 'person') newItem.rank = 1;
+                            if (newItem.type === 'food') newItem.maxHp = newItem.hp;
+                            if (newItem.type === 'task') { newItem.maxProgress = newItem.max; newItem.progress = 0; }
+                            
+                            grid.value[index].content = newItem;
+                        }
+                        return;
                     }
-                }
-            });
-        },
 
-        triggerBlackFoodDeath(foodIdx) {
-            // 周囲4マスの人を消す
-            const neighbors = this.getNeighbors(foodIdx);
-            neighbors.forEach(nIdx => {
-                if (this.grid[nIdx] && this.grid[nIdx].type === 'person') {
-                    this.$set(this.grid, nIdx, null);
-                    this.showPopup(nIdx, "死亡", "red"); // 演出
-                }
-            });
-            // 食べ物自体も消える？仕様には「HPが0になった瞬間...」とあるが
-            // 通常「食べ尽くした」扱いなら残るが、爆発的な効果なので消す方が自然
-            this.$set(this.grid, foodIdx, null);
-        },
+                    // Show Info / Delete
+                    if (grid.value[index].content) {
+                        selectedGridIndex.value = index;
+                        showDetailModal.value = true;
+                    }
+                };
 
-        completeTask(index, task, contributorRank) {
-            // 報酬計算
-            // 仕様: 「完了報酬にランク倍率がかかる」。
-            // しかし、タスクは複数人で進めるもの。誰のランクを参照するか？
-            // 簡易化: 最後の一押しをした（このループで処理している）人のランク、あるいは
-            // 本来は貢献度分配だが、仕様の複雑さを避けるため、
-            // 「タスクに隣接している全ての人の中で最高のランク」を倍率として採用する形にする。
-            
-            let maxRank = 1.0;
-            const neighbors = this.getNeighbors(index);
-            neighbors.forEach(nIdx => {
-                const p = this.grid[nIdx];
-                if (p && p.type === 'person') {
-                    if (p.rank > maxRank) maxRank = p.rank;
-                }
-            });
+                const deleteItem = () => {
+                    if (selectedGridIndex.value !== null) {
+                        grid.value[selectedGridIndex.value].content = null;
+                        showDetailModal.value = false;
+                        selectedGridIndex.value = null;
+                    }
+                };
 
-            let baseReward = 0;
-            if (task.sub === 'red' || task.sub === 'blue') baseReward = 20;
-            if (task.sub === 'green') baseReward = 30;
-            if (task.sub === 'black') baseReward = 100;
+                const closeDetailModal = () => {
+                    showDetailModal.value = false;
+                    selectedGridIndex.value = null;
+                };
 
-            const finalReward = Math.floor(baseReward * maxRank);
-            this.money += finalReward;
-            
-            // 演出
-            this.showPopup(index, `+${finalReward}万`, "#f1c40f");
-            
-            // リセット
-            task.progress = 0;
-        },
+                // --- Drag & Drop Logic (Touch) ---
+                const handleTouchStart = (e, index) => {
+                    if (!grid.value[index].content) return;
+                    // Long press or immediate? Immediate for game feel usually better but conflicts with tap.
+                    // Let's use a small delay or movement threshold to detect drag vs click.
+                    // Actually, simple logic: Start tracking. If moved > 10px, it's a drag.
+                    
+                    const touch = e.touches[0];
+                    dragStartIndex.value = index;
+                    ghostX.value = touch.clientX - 40;
+                    ghostY.value = touch.clientY - 40;
+                    draggingContent.value = grid.value[index].content;
+                    
+                    // Don't set isDragging true yet (wait for move)
+                };
 
-        getNeighbors(index) {
-            const neighbors = [];
-            const row = Math.floor(index / 4);
-            const col = index % 4;
+                const handleTouchMove = (e) => {
+                    if (dragStartIndex.value === null) return;
+                    const touch = e.touches[0];
+                    
+                    if (!isDragging.value) {
+                         isDragging.value = true;
+                    }
 
-            if (row > 0) neighbors.push(index - 4); // 上
-            if (row < 3) neighbors.push(index + 4); // 下
-            if (col > 0) neighbors.push(index - 1); // 左
-            if (col < 3) neighbors.push(index + 1); // 右
-            return neighbors;
-        },
+                    ghostX.value = touch.clientX - 40;
+                    ghostY.value = touch.clientY - 40;
 
-        finishGame() {
-            this.gameState = 'result';
-        },
+                    // Identify target
+                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+                    const cell = el?.closest('.cell');
+                    if (cell) {
+                        // Find index in grid (Need a robust way, simple loop here)
+                        // In Vue, we can't easily get index from DOM element without data attr.
+                        // Let's rely on coordinate math or just loop rects.
+                        // Simple approach: The grid structure is rigid.
+                        // But elementFromPoint is easiest.
+                        // Let's assume boardContainer is reference.
+                        // Actually, finding index is tricky with just DOM. 
+                        // Let's use logic: calculate based on board bounding rect.
+                    }
+                };
+                
+                // Better Drag Target Detection
+                const getIndexFromCoords = (x, y) => {
+                    if(!boardContainer.value) return null;
+                    const rect = boardContainer.value.getBoundingClientRect();
+                    const gridRect = boardContainer.value.querySelector('.grid').getBoundingClientRect();
+                    
+                    if (x < gridRect.left || x > gridRect.right || y < gridRect.top || y > gridRect.bottom) return null;
 
-        resetGame() {
-            this.money = 100;
-            this.timeRemaining = 10;
-            this.grid = Array(16).fill(null);
-            this.gameState = 'setup';
-            this.lastFrameTime = performance.now();
-            requestAnimationFrame(this.gameLoop);
-        },
+                    const colW = gridRect.width / 4;
+                    const rowH = gridRect.height / 4;
+                    
+                    const col = Math.floor((x - gridRect.left) / colW);
+                    const row = Math.floor((y - gridRect.top) / rowH);
+                    
+                    const idx = row * 4 + col;
+                    if (idx >= 0 && idx < 16) return idx;
+                    return null;
+                };
 
-        // --- Utils & Visuals ---
-        getRankLabel(rank) {
-            if (rank < 1.1) return "";
-            if (rank < 1.3) return "主任";
-            if (rank < 1.5) return "課長";
-            if (rank < 2.0) return "部長";
-            return "役員";
-        },
-        getTypeClass(item) {
-            return `type-${item.type} ${item.sub}`;
-        },
-        getItemIcon(item) {
-            return item.icon;
-        },
-        getItemName(item) {
-            return item.desc.split('(')[0]; // カッコ前だけ表示
-        },
-        getItemDesc(item) {
-            return item.desc;
-        },
-        getDragStyle(index) {
-            if (this.isDragging && this.dragStartIndex === index) {
-                return { opacity: 0.5, transform: 'scale(0.8)' };
+                // Override TouchMove for Target Calc
+                const customTouchMove = (e) => {
+                    if (dragStartIndex.value === null) return;
+                    if (!isDragging.value) isDragging.value = true;
+                    const touch = e.touches[0];
+                    ghostX.value = touch.clientX - 40;
+                    ghostY.value = touch.clientY - 40;
+                    
+                    dragTargetIndex.value = getIndexFromCoords(touch.clientX, touch.clientY);
+                };
+
+                const handleTouchEnd = (e) => {
+                    if (isDragging.value && dragStartIndex.value !== null && dragTargetIndex.value !== null) {
+                        // Swap
+                        const source = grid.value[dragStartIndex.value].content;
+                        const target = grid.value[dragTargetIndex.value].content;
+                        
+                        grid.value[dragTargetIndex.value].content = source;
+                        grid.value[dragStartIndex.value].content = target;
+                    }
+                    
+                    // Reset
+                    isDragging.value = false;
+                    dragStartIndex.value = null;
+                    dragTargetIndex.value = null;
+                    draggingContent.value = null;
+                };
+
+                const getSkillEffectText = (content) => {
+                    if (content.id === 's_red') return '力+1';
+                    if (content.id === 's_blue') return '知+1';
+                    if (content.id === 's_green') return '食半減';
+                    if (content.id === 's_black') return '昇進';
+                    return '';
+                };
+
+                const getModalTitle = () => {
+                    if (selectedGridIndex.value === null) return '';
+                    const c = grid.value[selectedGridIndex.value].content;
+                    return c ? c.name : '';
+                };
+
+                const getModalDesc = () => {
+                    if (selectedGridIndex.value === null) return '';
+                    const c = grid.value[selectedGridIndex.value].content;
+                    return c ? c.desc : '';
+                };
+
+                const resetGame = () => {
+                    money.value = 100;
+                    timeLeft.value = 10;
+                    phase.value = 'setup';
+                    grid.value = Array(16).fill().map(() => ({ content: null }));
+                    startGame();
+                };
+
+                onMounted(() => {
+                    startGame();
+                });
+
+                return {
+                    phase, money, formattedTime, grid, 
+                    activeTab, selectedPaletteItem, currentCategoryItems,
+                    selectPaletteItem, handleCellClick, 
+                    showDetailModal, selectedGridIndex, closeDetailModal, deleteItem,
+                    getModalTitle, getModalDesc, getSkillEffectText,
+                    // Drag
+                    handleTouchStart, handleTouchMove: customTouchMove, handleTouchEnd,
+                    isDragging, ghostX, ghostY, draggingContent, dragTargetIndex,
+                    boardContainer, resetGame
+                };
             }
-            return {};
-        },
-        showPopup(index, text, color) {
-            // グリッド座標から画素座標へ変換（簡易計算）
-            const row = Math.floor(index / 4);
-            const col = index % 4;
-            // grid-containerの位置を取得する必要があるが、
-            // ここでは簡易的に画面中央からのオフセットで計算するか、
-            // 固定DOMに依存させる。Vueのrefを使うのが正解だが、単一ファイル構成のため
-            // 仮想的な位置ランダムで散らす
-            const rect = document.querySelector('.grid-container').getBoundingClientRect();
-            const cellW = rect.width / 4;
-            const x = rect.left + col * cellW + cellW/2 - 20;
-            const y = rect.top + row * cellW + cellW/2;
-            
-            const id = this.popupIdCounter++;
-            this.popups.push({ id, text, x, y, color });
-            setTimeout(() => {
-                this.popups = this.popups.filter(p => p.id !== id);
-            }, 1000);
-        }
-    },
-    mounted() {
-        this.lastFrameTime = performance.now();
-        requestAnimationFrame(this.gameLoop);
-    }
-});
-</script>
+        }).mount('#app');
+    </script>
 </body>
 </html>
