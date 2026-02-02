@@ -2,721 +2,796 @@
 <html lang="ja">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>１分で稼ぐ</title>
-    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>１分で稼ぐ - 1 Minute Earn</title>
     <style>
-        /* --- Base & Reset --- */
         :root {
             --c-red: #FF6B6B;
             --c-blue: #4ECDC4;
             --c-green: #95E1D3;
             --c-black: #2C3E50;
-            --c-bg: #f7f9fc;
-            --c-panel: #ffffff;
+            --c-bg: #f7f9fa;
             --c-text: #333;
-            --safe-bottom: env(safe-area-inset-bottom, 20px);
-        }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none; }
-        body {
-            margin: 0; padding: 0; width: 100%; height: 100vh; height: 100dvh;
-            overflow: hidden; background-color: var(--c-bg);
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            color: var(--c-text); touch-action: none;
+            --c-money: #f1c40f;
         }
 
-        /* --- Layout --- */
-        #app {
-            display: flex; flex-direction: column; height: 95%; /* 指定の95%固定 */
-            max-width: 600px; margin: 0 auto; position: relative;
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        /* Fill bottom safe area */
-        .bottom-fill {
-            position: absolute; bottom: -100px; left: 0; right: 0; height: 100px;
-            background-color: var(--c-panel); z-index: -1;
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100vh; /* フォールバック */
+            height: 100dvh;
+            overflow: hidden;
+            background-color: var(--c-bg);
+            color: var(--c-text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
 
         /* --- Header --- */
         header {
-            flex: 0 0 auto; padding: 10px 20px;
-            display: flex; justify-content: space-between; align-items: center;
-            background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,0.05); z-index: 10;
+            width: 95%;
+            height: 15%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            font-weight: bold;
         }
-        .timer-box { font-size: 2rem; font-weight: 800; font-variant-numeric: tabular-nums; }
-        .timer-box.setup { color: var(--c-red); }
-        .timer-box.main { color: var(--c-black); text-shadow: 2px 2px 0px rgba(0,0,0,0.1); }
-        .money-box { font-size: 1.2rem; font-weight: bold; color: #f1c40f; text-shadow: 1px 1px 0 #b7950b; }
+
+        .status-box {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        #timer {
+            font-size: 2.5rem;
+            font-family: monospace;
+            color: var(--c-black);
+        }
+
+        #money {
+            font-size: 1.5rem;
+            color: #d35400;
+        }
+        
+        #money::after {
+            content: '万円';
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        #start-btn {
+            background: var(--c-red);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 0 #c0392b;
+            active:translate(0, 4px);
+        }
+        #start-btn:active {
+            transform: translateY(4px);
+            box-shadow: none;
+        }
 
         /* --- Main Board --- */
-        .board-container {
-            flex: 1 1 auto; display: flex; align-items: center; justify-content: center;
-            padding: 10px; overflow: hidden; position: relative;
+        #board-container {
+            width: 95%;
+            flex-grow: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 10px;
         }
-        .grid {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
-            width: 100%; aspect-ratio: 1 / 1; max-height: 100%;
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+            width: 100%;
+            max-width: 500px; /* PC閲覧時の破綻防止 */
+            background: #ddd;
+            padding: 4px;
+            border-radius: 4px;
         }
+
         .cell {
-            background: #e0e6ed; border-radius: 8px; position: relative;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 0.8rem; font-weight: bold; overflow: hidden;
-            transition: transform 0.1s; box-shadow: inset 2px 2px 5px rgba(0,0,0,0.05);
+            background-color: white;
+            aspect-ratio: 1;
+            width: 100%;
+            overflow: hidden;
+            position: relative;
+            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.8rem;
+            transition: transform 0.1s;
         }
-        .cell.active { background: #fff; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer; }
-        .cell.selected-target { border: 2px solid var(--c-blue); }
-        .cell-content { width: 100%; height: 100%; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; pointer-events: none;}
-        
-        /* Icons & Colors */
-        .icon { font-size: 1.8rem; line-height: 1; text-align: center; margin-top: 4px;}
-        .type-person { color: var(--c-black); } /* 人は枠色で区別 */
-        .bg-red { background-color: rgba(255, 107, 107, 0.15); border: 2px solid var(--c-red); color: var(--c-red); }
-        .bg-blue { background-color: rgba(78, 205, 196, 0.15); border: 2px solid var(--c-blue); color: var(--c-blue); }
-        .bg-green { background-color: rgba(149, 225, 211, 0.15); border: 2px solid var(--c-green); color: var(--c-green); }
-        .bg-black { background-color: rgba(44, 62, 80, 0.15); border: 2px solid var(--c-black); color: var(--c-black); }
-        
+
+        .cell.dragging {
+            opacity: 0.5;
+            border: 2px dashed var(--c-black);
+        }
+
+        .item {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 2px;
+            text-align: center;
+            position: relative;
+        }
+
+        /* Item Colors */
+        .bg-red { background-color: var(--c-red); color: white; }
+        .bg-blue { background-color: var(--c-blue); color: white; }
+        .bg-green { background-color: var(--c-green); color: #333; }
+        .bg-black { background-color: var(--c-black); color: white; }
+
+        .item-icon { font-size: 1.5rem; line-height: 1; margin-top: 4px; }
+        .item-info { font-size: 0.6rem; line-height: 1.1; white-space: nowrap; }
+
         /* Bars */
-        .bar-container { width: 100%; height: 6px; background: #ddd; border-radius: 3px; overflow: hidden; margin-top: auto;}
-        .bar-fill { height: 100%; transition: width 0.2s linear; }
-        .bar-food { background-color: #F39C12; }
-        .bar-task { background-color: #8E44AD; }
-        .stats-text { font-size: 0.6rem; text-align: center; white-space: nowrap; }
+        .bar-container {
+            width: 90%;
+            height: 4px;
+            background: rgba(0,0,0,0.3);
+            margin: 2px auto;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .bar-fill { height: 100%; width: 0%; transition: width 0.2s linear; }
+        .bar-hp { background-color: #e74c3c; } /* Food HP */
+        .bar-progress { background-color: #f1c40f; } /* Task Progress */
 
-        /* --- Panel --- */
-        .panel {
-            flex: 0 0 40%; background: var(--c-panel);
-            border-top: 1px solid #eee; display: flex; flex-direction: column;
-            padding-bottom: var(--safe-bottom);
+        /* --- Control Panel --- */
+        #controls {
+            width: 95%;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            background: white;
+            border-radius: 12px 12px 0 0;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+            margin-bottom: 0;
+            padding-bottom: 20px; /* Safe area */
         }
-        /* Info Area (Top) */
-        .info-area {
-            flex: 0 0 50px; padding: 5px 15px; border-bottom: 1px solid #f0f0f0;
-            display: flex; align-items: center; justify-content: space-between; font-size: 0.9rem;
+
+        /* Info Panel (Top) */
+        #info-panel {
+            height: 40px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            background: #f0f0f0;
+            display: flex;
+            align-items: center;
+            border-bottom: 1px solid #ddd;
         }
-        .info-detail { font-size: 0.8rem; color: #666; }
-        /* List Area (Middle) */
-        .list-area {
-            flex: 1; overflow-x: auto; display: flex; align-items: center; padding: 0 10px;
-            -webkit-overflow-scrolling: touch;
+
+        /* Palette (Middle) */
+        #palette {
+            flex-grow: 1;
+            display: flex;
+            padding: 10px;
+            gap: 10px;
+            overflow-x: auto;
+            align-items: center;
         }
-        .list-item {
-            flex: 0 0 70px; height: 70px; margin-right: 10px; border-radius: 8px; border: 2px solid #eee;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            font-size: 0.7rem; transition: all 0.2s;
+
+        .palette-item {
+            min-width: 60px;
+            height: 60px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.7rem;
+            cursor: pointer;
+            border: 2px solid transparent;
+            position: relative;
         }
-        .list-item.selected { border-color: var(--c-black); background: #f0f0f0; transform: translateY(-2px); }
-        .cost-badge { background: #333; color: #fff; padding: 2px 6px; border-radius: 10px; font-size: 0.6rem; margin-top: 2px;}
         
-        /* Tab Area (Bottom) */
-        .tab-area {
-            flex: 0 0 40px; display: flex; border-top: 1px solid #eee;
+        .palette-item.selected {
+            border-color: var(--c-black);
+            transform: scale(1.05);
         }
+
+        .cost-badge {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: gold;
+            color: black;
+            font-size: 0.6rem;
+            padding: 2px 4px;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+
+        /* Tabs (Bottom) */
+        #tabs {
+            display: flex;
+            height: 40px;
+            border-top: 1px solid #ddd;
+        }
+
         .tab {
-            flex: 1; display: flex; align-items: center; justify-content: center;
-            font-size: 0.9rem; font-weight: bold; color: #999;
-            background: #fafafa; cursor: pointer;
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #eee;
+            color: #666;
+            font-size: 0.9rem;
+            cursor: pointer;
         }
-        .tab.active { background: #fff; color: var(--c-black); border-top: 3px solid var(--c-black); }
+        .tab.active {
+            background: white;
+            color: var(--c-black);
+            font-weight: bold;
+            border-top: 3px solid var(--c-black);
+        }
 
-        /* --- Modal & Overlays --- */
-        .overlay {
-            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 100;
-            display: flex; align-items: center; justify-content: center;
+        /* Overlay */
+        #overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.85);
+            color: white;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
         }
-        .modal {
-            background: #fff; padding: 20px; border-radius: 12px; width: 85%;
-            text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        .result-title { font-size: 2rem; margin-bottom: 20px; }
+        .result-score { font-size: 3rem; color: var(--c-money); font-weight: bold; margin-bottom: 30px; }
+        .restart-btn {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background: white;
+            color: black;
+            border: none;
+            border-radius: 50px;
         }
-        .modal h2 { margin: 0 0 10px; font-size: 1.5rem; }
-        .modal p { margin: 10px 0; color: #555; }
-        .btn {
-            background: var(--c-black); color: #fff; border: none; padding: 10px 20px;
-            border-radius: 6px; font-size: 1rem; font-weight: bold; cursor: pointer; margin-top: 10px;
-        }
-        .btn-red { background: var(--c-red); }
-        .btn-close { position: absolute; top: 10px; right: 10px; background: #ddd; width: 30px; height: 30px; border-radius: 50%; border:none; font-weight:bold;}
 
-        /* Dragging Ghost */
-        .ghost {
-            position: fixed; width: 80px; height: 80px; background: rgba(255,255,255,0.9);
-            border: 2px solid var(--c-black); border-radius: 8px; pointer-events: none;
-            z-index: 999; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
+        /* Delete Button Overlay for Grid */
+        .cell-overlay {
+            position: absolute;
+            top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
         }
+        .del-btn {
+            background: red; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 0.8rem;
+        }
+
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="bottom-fill"></div>
 
-        <header>
-            <div class="timer-box" :class="phase === 'setup' ? 'setup' : 'main'">
-                {{ formattedTime }}
-            </div>
-            <div class="money-box">
-                {{ money }}万円
-            </div>
-        </header>
-
-        <div class="board-container" ref="boardContainer">
-            <div class="grid">
-                <div v-for="(cell, index) in grid" :key="index" 
-                     class="cell" 
-                     :class="[
-                        cell.content ? `bg-${cell.content.color}` : '',
-                        cell.content ? 'active' : '',
-                        dragTargetIndex === index ? 'selected-target' : ''
-                     ]"
-                     @touchstart.passive="handleTouchStart($event, index)"
-                     @touchmove="handleTouchMove($event)"
-                     @touchend="handleTouchEnd($event)"
-                     @click="handleCellClick(index)">
-                    
-                    <div v-if="cell.content" class="cell-content">
-                        <div class="stats-text" v-if="cell.content.type === 'person'">
-                            Rank {{ cell.content.rank }}
-                        </div>
-                        <div class="icon">
-                            <span v-if="cell.content.type === 'person'">웃</span>
-                            <span v-else-if="cell.content.type === 'food'">🍖</span>
-                            <span v-else-if="cell.content.type === 'task'">📝</span>
-                            <span v-else-if="cell.content.type === 'skill'">★</span>
-                        </div>
-                        
-                        <div class="bar-container" v-if="cell.content.type === 'food'">
-                            <div class="bar-fill bar-food" :style="{ width: (cell.content.hp / cell.content.maxHp * 100) + '%' }"></div>
-                        </div>
-                        <div class="bar-container" v-if="cell.content.type === 'task'">
-                            <div class="bar-fill bar-task" :style="{ width: (cell.content.progress / cell.content.maxProgress * 100) + '%' }"></div>
-                        </div>
-                        
-                        <div class="stats-text">
-                            <span v-if="cell.content.type === 'person'">{{cell.content.str}}/{{cell.content.int}}</span>
-                            <span v-if="cell.content.type === 'skill'">{{ getSkillEffectText(cell.content) }}</span>
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <header>
+        <div class="status-box">
+            <div id="timer">準備中</div>
         </div>
-
-        <div class="panel">
-            <div class="info-area">
-                <div v-if="selectedPaletteItem">
-                    <strong>{{ selectedPaletteItem.name }}</strong>
-                    <span class="cost-badge" style="margin-left:8px">{{ selectedPaletteItem.cost }}万円</span>
-                </div>
-                <div v-else style="color:#999">アイテムを選択してください</div>
-                <div v-if="selectedPaletteItem" class="info-detail">{{ selectedPaletteItem.desc }}</div>
-            </div>
-
-            <div class="list-area">
-                <div v-for="item in currentCategoryItems" :key="item.id"
-                     class="list-item"
-                     :class="[
-                        selectedPaletteItem && selectedPaletteItem.id === item.id ? 'selected' : '',
-                        `bg-${item.color}`
-                     ]"
-                     @click="selectPaletteItem(item)">
-                    <span style="font-size:1.2rem">
-                        {{ item.icon }}
-                    </span>
-                    <span class="cost-badge">{{ item.cost }}</span>
-                </div>
-            </div>
-
-            <div class="tab-area">
-                <div class="tab" :class="{ active: activeTab === 'person' }" @click="activeTab = 'person'">人</div>
-                <div class="tab" :class="{ active: activeTab === 'food' }" @click="activeTab = 'food'">食物</div>
-                <div class="tab" :class="{ active: activeTab === 'task' }" @click="activeTab = 'task'">タスク</div>
-                <div class="tab" :class="{ active: activeTab === 'skill' }" @click="activeTab = 'skill'">スキル</div>
-            </div>
+        <div class="status-box" style="align-items: flex-end;">
+            <div id="money">100</div>
         </div>
+        <button id="start-btn" onclick="startGame()">スタート</button>
+    </header>
 
-        <div v-if="showDetailModal" class="overlay" @click.self="closeDetailModal">
-            <div class="modal">
-                <button class="btn-close" @click="closeDetailModal">×</button>
-                <h2>{{ getModalTitle() }}</h2>
-                <p>{{ getModalDesc() }}</p>
-                <div v-if="grid[selectedGridIndex].content.type === 'person'">
-                    <p>現在のRank: {{ grid[selectedGridIndex].content.rank }}</p>
-                </div>
-                <button class="btn btn-red" @click="deleteItem">削除する (返金なし)</button>
+    <div id="board-container">
+        <div id="grid">
             </div>
-        </div>
+    </div>
 
-        <div v-if="phase === 'result'" class="overlay">
-            <div class="modal">
-                <h2>終了！</h2>
-                <p>最終所持金</p>
-                <div style="font-size: 2.5rem; font-weight:800; color:#f1c40f; margin: 10px 0;">
-                    {{ money }}<span style="font-size:1rem; color:#333">万円</span>
-                </div>
-                <button class="btn" @click="resetGame">もう一度遊ぶ</button>
+    <div id="controls">
+        <div id="info-panel">アイテムを選択してください</div>
+        <div id="palette">
             </div>
-        </div>
-
-        <div v-if="isDragging" class="ghost" :style="{ top: ghostY + 'px', left: ghostX + 'px' }">
-            <span style="font-size:2rem">{{ draggingContent?.icon }}</span>
+        <div id="tabs">
+            <div class="tab active" onclick="setTab('person')">人</div>
+            <div class="tab" onclick="setTab('food')">食物</div>
+            <div class="tab" onclick="setTab('task')">タスク</div>
+            <div class="tab" onclick="setTab('skill')">スキル</div>
         </div>
     </div>
 
-    <script>
-        const { createApp, ref, computed, onMounted, onUnmounted } = Vue;
+    <div id="overlay">
+        <div class="result-title">TIME UP</div>
+        <div class="result-score">0万円</div>
+        <button class="restart-btn" onclick="location.reload()">もう一度</button>
+    </div>
 
-        // Data Definitions
-        const ITEM_DEFINITIONS = {
-            person: [
-                { id: 'p_red', name: '肉体派', color: 'red', cost: 30, type: 'person', icon: '웃', str: 15, int: 5, desc: '力15 / 知5' },
-                { id: 'p_blue', name: '頭脳派', color: 'blue', cost: 30, type: 'person', icon: '웃', str: 5, int: 15, desc: '力5 / 知15' },
-                { id: 'p_green', name: 'バランス', color: 'green', cost: 30, type: 'person', icon: '웃', str: 10, int: 10, desc: '力10 / 知10' },
-                { id: 'p_black', name: '低スペック', color: 'black', cost: 30, type: 'person', icon: '웃', str: 5, int: 5, desc: '力5 / 知5 (黒案件に必須)' },
-            ],
-            food: [
-                { id: 'f_red', name: '赤い肉', color: 'red', cost: 5, type: 'food', icon: '🍖', hp: 200, desc: '赤の好物 (他は消費倍)' },
-                { id: 'f_blue', name: '青い魚', color: 'blue', cost: 5, type: 'food', icon: '🍖', hp: 200, desc: '青の好物 (他は消費倍)' },
-                { id: 'f_green', name: '野菜', color: 'green', cost: 10, type: 'food', icon: '🍖', hp: 200, desc: '誰でも通常消費' },
-                { id: 'f_black', name: '謎の肉', color: 'black', cost: 0, type: 'food', icon: '🍖', hp: 200, desc: '無くなると周囲が死ぬ' },
-            ],
-            task: [
-                { id: 't_red', name: '力仕事', color: 'red', cost: 0, type: 'task', icon: '📝', max: 200, req: 'str', reward: 20, desc: '必要：力 / 報酬20万' },
-                { id: 't_blue', name: '事務', color: 'blue', cost: 0, type: 'task', icon: '📝', max: 200, req: 'int', reward: 20, desc: '必要：知 / 報酬20万' },
-                { id: 't_green', name: '総合職', color: 'green', cost: 0, type: 'task', icon: '📝', max: 300, req: 'both', reward: 20, desc: '必要：力+知 / 報酬20万' },
-                { id: 't_black', name: '巨大案件', color: 'black', cost: 0, type: 'task', icon: '📝', max: 500, req: 'both', reward: 100, desc: '黒の人必須 / 報酬100万' },
-            ],
-            skill: [
-                { id: 's_red', name: '筋トレ', color: 'red', cost: 30, type: 'skill', icon: '★', desc: '周囲の力+1' },
-                { id: 's_blue', name: '勉強会', color: 'blue', cost: 30, type: 'skill', icon: '★', desc: '周囲の知+1' },
-                { id: 's_green', name: '節約術', color: 'green', cost: 30, type: 'skill', icon: '★', desc: '周囲の食費半減' },
-                { id: 's_black', name: '昇進辞令', color: 'black', cost: 30, type: 'skill', icon: '★', desc: '10秒毎に周囲を昇進' },
-            ]
-        };
+<script>
+    // --- Constants & Config ---
+    const GRID_SIZE = 16;
+    const ROWS = 4;
+    const COLS = 4;
+    
+    // アイテム定義
+    const DB = {
+        person: [
+            { id: 'p_red', name: '肉体派', cost: 30, color: 'bg-red', str: 15, int: 5, icon: '💪' },
+            { id: 'p_blue', name: '頭脳派', cost: 30, color: 'bg-blue', str: 5, int: 15, icon: '🧠' },
+            { id: 'p_green', name: 'バランス', cost: 30, color: 'bg-green', str: 10, int: 10, icon: '⚖️' },
+            { id: 'p_black', name: '新人(黒)', cost: 30, color: 'bg-black', str: 5, int: 5, icon: '♟️', special: 'black_key' }
+        ],
+        food: [
+            { id: 'f_red', name: '赤の食料', cost: 5, color: 'bg-red', hp: 200, icon: '🍖' },
+            { id: 'f_blue', name: '青の食料', cost: 5, color: 'bg-blue', hp: 200, icon: '🐟' },
+            { id: 'f_green', name: '緑の食料', cost: 10, color: 'bg-green', hp: 200, icon: '🥗' },
+            { id: 'f_black', name: '謎の肉', cost: 0, color: 'bg-black', hp: 200, icon: '☠️', special: 'bomb' }
+        ],
+        task: [
+            { id: 't_red', name: '力仕事', cost: 0, color: 'bg-red', hp: 200, req: 'str', reward: 20, icon: '📦' },
+            { id: 't_blue', name: '知的作業', cost: 0, color: 'bg-blue', hp: 200, req: 'int', reward: 20, icon: '💻' },
+            { id: 't_green', name: '総合業務', cost: 0, color: 'bg-green', hp: 300, req: 'both', reward: 20, icon: '📝' },
+            { id: 't_black', name: '闇案件', cost: 0, color: 'bg-black', hp: 500, req: 'both', reward: 100, icon: '💼', needBlack: true }
+        ],
+        skill: [
+            { id: 's_red', name: 'ジム', cost: 30, color: 'bg-red', effect: 'str_buff', icon: '🏋️' },
+            { id: 's_blue', name: '図書館', cost: 30, color: 'bg-blue', effect: 'int_buff', icon: '📚' },
+            { id: 's_green', name: '休憩所', cost: 30, color: 'bg-green', effect: 'cal_save', icon: '☕' },
+            { id: 's_black', name: '研修所', cost: 30, color: 'bg-black', effect: 'rank_up', icon: '🏫' }
+        ]
+    };
 
-        createApp({
-            setup() {
-                // Game State
-                const phase = ref('setup'); // setup, playing, result
-                const money = ref(100);
-                const timeLeft = ref(10);
-                const grid = ref(Array(16).fill().map(() => ({ content: null })));
-                const activeTab = ref('person');
-                const selectedPaletteItem = ref(null);
-                
-                // Modal & Interaction
-                const showDetailModal = ref(false);
-                const selectedGridIndex = ref(null);
-                const boardContainer = ref(null);
+    // --- State ---
+    let gameState = {
+        phase: 0, // 0:Wait, 1:Setup, 2:Play, 3:Result
+        money: 100,
+        timer: 0, // Seconds
+        grid: new Array(GRID_SIZE).fill(null),
+        selectedItem: null,
+        currentTab: 'person',
+        frameCount: 0,
+        skillTimer: 0 // For 10s intervals
+    };
 
-                // Dragging State
-                const isDragging = ref(false);
-                const dragStartIndex = ref(null);
-                const dragTargetIndex = ref(null); // Highlight drop target
-                const ghostX = ref(0);
-                const ghostY = ref(0);
-                const draggingContent = ref(null);
+    // --- Core System ---
+    
+    function init() {
+        createGrid();
+        setTab('person');
+        render();
+        requestAnimationFrame(gameLoop);
+    }
 
-                // Timer Loop
-                let timerInterval = null;
-                let tickCount = 0; // For 10s checks
+    function createGrid() {
+        const gridEl = document.getElementById('grid');
+        gridEl.innerHTML = '';
+        for (let i = 0; i < GRID_SIZE; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.dataset.index = i;
+            // Touch events for interaction
+            cell.addEventListener('click', () => handleCellClick(i));
+            
+            // Drag and Drop (Touch)
+            cell.addEventListener('touchstart', handleTouchStart, {passive: false});
+            cell.addEventListener('touchmove', handleTouchMove, {passive: false});
+            cell.addEventListener('touchend', handleTouchEnd);
+            
+            gridEl.appendChild(cell);
+        }
+    }
 
-                const currentCategoryItems = computed(() => ITEM_DEFINITIONS[activeTab.value]);
+    // --- Game Logic ---
 
-                const formattedTime = computed(() => {
-                    if (phase.value === 'setup') return `START IN ${timeLeft.value}`;
-                    if (phase.value === 'result') return "FINISH";
-                    const m = Math.floor(timeLeft.value / 60);
-                    const s = timeLeft.value % 60;
-                    return `${m}:${s.toString().padStart(2, '0')}`;
-                });
+    function startGame() {
+        if (gameState.phase !== 0) return;
+        gameState.phase = 1;
+        gameState.timer = 10;
+        document.getElementById('start-btn').style.display = 'none';
+        render();
+    }
 
-                // --- Game Logic Core ---
-
-                const getNeighbors = (idx) => {
-                    const row = Math.floor(idx / 4);
-                    const col = idx % 4;
-                    const neighbors = [];
-                    // Up, Down, Left, Right
-                    if (row > 0) neighbors.push(idx - 4);
-                    if (row < 3) neighbors.push(idx + 4);
-                    if (col > 0) neighbors.push(idx - 1);
-                    if (col < 3) neighbors.push(idx + 1);
-                    return neighbors;
-                };
-
-                const startGame = () => {
-                    // Setup Phase Countdown
-                    timerInterval = setInterval(() => {
-                        timeLeft.value--;
-                        if (timeLeft.value <= 0) {
-                            clearInterval(timerInterval);
-                            phase.value = 'playing';
-                            timeLeft.value = 60;
-                            tickCount = 0;
-                            startMainLoop();
-                        }
-                    }, 1000);
-                };
-
-                const startMainLoop = () => {
-                    timerInterval = setInterval(() => {
-                        processGameTick();
-                        timeLeft.value--;
-                        if (timeLeft.value <= 0) {
-                            clearInterval(timerInterval);
-                            phase.value = 'result';
-                        }
-                    }, 1000);
-                };
-
-                const processGameTick = () => {
-                    tickCount++;
-                    // 1. Calculate Buffs & Reset Temp Stats
-                    // Create a snapshot of buffs to apply
-                    const buffs = Array(16).fill().map(() => ({ str: 0, int: 0, saveFood: false }));
-                    
-                    grid.value.forEach((cell, idx) => {
-                        if (cell.content && cell.content.type === 'skill') {
-                            const neighbors = getNeighbors(idx);
-                            neighbors.forEach(nIdx => {
-                                if (cell.content.id === 's_red') buffs[nIdx].str += 1;
-                                if (cell.content.id === 's_blue') buffs[nIdx].int += 1;
-                                if (cell.content.id === 's_green') buffs[nIdx].saveFood = true;
-                                if (cell.content.id === 's_black' && tickCount % 10 === 0) {
-                                    // Promotion Event
-                                    if (grid.value[nIdx].content && grid.value[nIdx].content.type === 'person') {
-                                        grid.value[nIdx].content.rank++;
-                                    }
-                                }
-                            });
-                        }
-                    });
-
-                    // 2. Logic for Persons (Consume & Work)
-                    grid.value.forEach((cell, idx) => {
-                        if (!cell.content || cell.content.type !== 'person') return;
-                        
-                        const p = cell.content;
-                        // Apply Buffs
-                        const currentStr = p.str + buffs[idx].str;
-                        const currentInt = p.int + buffs[idx].int;
-                        const isDiet = buffs[idx].saveFood;
-
-                        // --- Eat Food ---
-                        const neighbors = getNeighbors(idx);
-                        let bestFoodIdx = -1;
-                        let minConsumption = 999;
-
-                        // Find best food
-                        neighbors.forEach(nIdx => {
-                            const target = grid.value[nIdx].content;
-                            if (target && target.type === 'food') {
-                                let consumption = 20;
-                                if (p.color === target.color) consumption = 10;
-                                if (target.color === 'green' || target.color === 'black') consumption = 10;
-                                if (isDiet) consumption = Math.ceil(consumption / 2);
-
-                                // Prioritize lower consumption, then just pick first
-                                if (consumption < minConsumption) {
-                                    minConsumption = consumption;
-                                    bestFoodIdx = nIdx;
-                                } else if (consumption === minConsumption && bestFoodIdx === -1) {
-                                    bestFoodIdx = nIdx;
-                                }
-                            }
-                        });
-
-                        // Consume
-                        if (bestFoodIdx !== -1) {
-                            grid.value[bestFoodIdx].content.hp -= minConsumption;
-                            // Check empty later
-                        }
-
-                        // --- Do Tasks ---
-                        const adjacentTasks = [];
-                        let hasBlackPerson = (p.id === 'p_black'); // Am I black?
-
-                        neighbors.forEach(nIdx => {
-                            const t = grid.value[nIdx].content;
-                            if (t && t.type === 'task') {
-                                // Black Task check
-                                if (t.id === 't_black') {
-                                    // Need black person neighbor. 
-                                    // Current person is adjacent to task.
-                                    // We need to check if ANY neighbor of the TASK is a black person.
-                                    // Optimization: Just check if *this* person is black, or if other neighbors of task are black.
-                                    // Actually, simpler: The task processes its own requirement? 
-                                    // No, the person PUSHES progress.
-                                    // If task is black, only push if *I* am black OR a black person is next to task.
-                                    // Constraint: "If black person not adjacent, task does not progress".
-                                    // So even if I am Red, I can push Black Task IF a Black Person is also there.
-                                    const taskNeighbors = getNeighbors(nIdx);
-                                    const blackPresent = taskNeighbors.some(tn => 
-                                        grid.value[tn].content && grid.value[tn].content.id === 'p_black'
-                                    );
-                                    if (!blackPresent) return; 
-                                }
-                                adjacentTasks.push(nIdx);
-                            }
-                        });
-
-                        if (adjacentTasks.length > 0) {
-                            // Calculate total power
-                            let power = 0;
-                            // Need to know requirement per task. Logic says "Adjacent person capability advances gauge".
-                            // If multiple tasks, "Force 11 to 2 tasks -> 6 and 6". 
-                            // This implies we calculate power PER TASK type? No, usually power is generic.
-                            // But tasks require STR or INT.
-                            // Interpretation: Apply (STR or INT or BOTH) to EACH task, divided by count?
-                            // Let's assume split logic applies to the *effort*.
-                            // But the STAT used depends on the TASK.
-                            // Implementation:
-                            // 1. Calculate potential power for each task.
-                            // 2. Sum them? No, split the "Action".
-                            // Actually, the simplest interpretation of "Force 11 to 2 tasks -> 6 and 6" is:
-                            // The person exerts effort on ALL adjacent tasks simultaneously, but intensity is split?
-                            // Or is it full power to all? 
-                            // "Force 11 to 2 tasks -> 6 and 6" means Force is a pool.
-                            // So: Pool = Stat. Split Pool by N tasks. Ceiling.
-                            
-                            const count = adjacentTasks.length;
-                            adjacentTasks.forEach(tIdx => {
-                                const task = grid.value[tIdx].content;
-                                let statVal = 0;
-                                if (task.req === 'str') statVal = currentStr;
-                                else if (task.req === 'int') statVal = currentInt;
-                                else statVal = currentStr + currentInt; // Both
-
-                                const amount = Math.ceil(statVal / count);
-                                grid.value[tIdx].content.progress += amount;
-                            });
-                        }
-                    });
-
-                    // 3. Post-Process (Food Death / Task Complete)
-                    // Food Death & Black Explosion
-                    grid.value.forEach((cell, idx) => {
-                        if (cell.content && cell.content.type === 'food') {
-                            if (cell.content.hp <= 0) {
-                                // Explosion?
-                                if (cell.content.id === 'f_black') {
-                                    const neighbors = getNeighbors(idx);
-                                    neighbors.forEach(nIdx => {
-                                        if (grid.value[nIdx].content && grid.value[nIdx].content.type === 'person') {
-                                            grid.value[nIdx].content = null; // DEAD
-                                        }
-                                    });
-                                }
-                                cell.content = null; // Remove food
-                            }
-                        }
-                    });
-
-                    // Task Completion
-                    grid.value.forEach((cell, idx) => {
-                        if (cell.content && cell.content.type === 'task') {
-                            if (cell.content.progress >= cell.content.maxProgress) {
-                                // Reward
-                                // We need rank of WHO? 
-                                // "Reward x Rank". Which rank?
-                                // Usually in these games, the task stores who worked on it? Too complex.
-                                // Re-read: "Reward: 200k x Rank". 
-                                // "Person Rank... affects Task Reward multiplier".
-                                // This implies the Person's Rank modifies the reward generated by their work?
-                                // OR: The Task checks adjacent people's rank?
-                                // Let's simplify: Average Rank of adjacent people? Max Rank?
-                                // Or maybe the money is added *during* work? No, "Completion".
-                                // Let's take the MAX Rank of any adjacent person contributing.
-                                const neighbors = getNeighbors(idx);
-                                let maxRank = 1;
-                                neighbors.forEach(nIdx => {
-                                    if (grid.value[nIdx].content && grid.value[nIdx].content.type === 'person') {
-                                        if (grid.value[nIdx].content.rank > maxRank) maxRank = grid.value[nIdx].content.rank;
-                                    }
-                                });
-                                
-                                money.value += Math.ceil(cell.content.reward * maxRank);
-                                cell.content.progress = 0; // Reset
-                            }
-                        }
-                    });
-                };
-
-                // --- Interaction Handlers ---
-
-                const selectPaletteItem = (item) => {
-                    selectedPaletteItem.value = item;
-                };
-
-                const handleCellClick = (index) => {
-                    // Place Item
-                    if (selectedPaletteItem.value && !grid.value[index].content) {
-                        if (money.value >= selectedPaletteItem.value.cost) {
-                            money.value -= selectedPaletteItem.value.cost;
-                            // Clone object
-                            const newItem = JSON.parse(JSON.stringify(selectedPaletteItem.value));
-                            // Init dynamic props
-                            if (newItem.type === 'person') newItem.rank = 1;
-                            if (newItem.type === 'food') newItem.maxHp = newItem.hp;
-                            if (newItem.type === 'task') { newItem.maxProgress = newItem.max; newItem.progress = 0; }
-                            
-                            grid.value[index].content = newItem;
-                        }
-                        return;
-                    }
-
-                    // Show Info / Delete
-                    if (grid.value[index].content) {
-                        selectedGridIndex.value = index;
-                        showDetailModal.value = true;
-                    }
-                };
-
-                const deleteItem = () => {
-                    if (selectedGridIndex.value !== null) {
-                        grid.value[selectedGridIndex.value].content = null;
-                        showDetailModal.value = false;
-                        selectedGridIndex.value = null;
-                    }
-                };
-
-                const closeDetailModal = () => {
-                    showDetailModal.value = false;
-                    selectedGridIndex.value = null;
-                };
-
-                // --- Drag & Drop Logic (Touch) ---
-                const handleTouchStart = (e, index) => {
-                    if (!grid.value[index].content) return;
-                    // Long press or immediate? Immediate for game feel usually better but conflicts with tap.
-                    // Let's use a small delay or movement threshold to detect drag vs click.
-                    // Actually, simple logic: Start tracking. If moved > 10px, it's a drag.
-                    
-                    const touch = e.touches[0];
-                    dragStartIndex.value = index;
-                    ghostX.value = touch.clientX - 40;
-                    ghostY.value = touch.clientY - 40;
-                    draggingContent.value = grid.value[index].content;
-                    
-                    // Don't set isDragging true yet (wait for move)
-                };
-
-                const handleTouchMove = (e) => {
-                    if (dragStartIndex.value === null) return;
-                    const touch = e.touches[0];
-                    
-                    if (!isDragging.value) {
-                         isDragging.value = true;
-                    }
-
-                    ghostX.value = touch.clientX - 40;
-                    ghostY.value = touch.clientY - 40;
-
-                    // Identify target
-                    const el = document.elementFromPoint(touch.clientX, touch.clientY);
-                    const cell = el?.closest('.cell');
-                    if (cell) {
-                        // Find index in grid (Need a robust way, simple loop here)
-                        // In Vue, we can't easily get index from DOM element without data attr.
-                        // Let's rely on coordinate math or just loop rects.
-                        // Simple approach: The grid structure is rigid.
-                        // But elementFromPoint is easiest.
-                        // Let's assume boardContainer is reference.
-                        // Actually, finding index is tricky with just DOM. 
-                        // Let's use logic: calculate based on board bounding rect.
-                    }
-                };
-                
-                // Better Drag Target Detection
-                const getIndexFromCoords = (x, y) => {
-                    if(!boardContainer.value) return null;
-                    const rect = boardContainer.value.getBoundingClientRect();
-                    const gridRect = boardContainer.value.querySelector('.grid').getBoundingClientRect();
-                    
-                    if (x < gridRect.left || x > gridRect.right || y < gridRect.top || y > gridRect.bottom) return null;
-
-                    const colW = gridRect.width / 4;
-                    const rowH = gridRect.height / 4;
-                    
-                    const col = Math.floor((x - gridRect.left) / colW);
-                    const row = Math.floor((y - gridRect.top) / rowH);
-                    
-                    const idx = row * 4 + col;
-                    if (idx >= 0 && idx < 16) return idx;
-                    return null;
-                };
-
-                // Override TouchMove for Target Calc
-                const customTouchMove = (e) => {
-                    if (dragStartIndex.value === null) return;
-                    if (!isDragging.value) isDragging.value = true;
-                    const touch = e.touches[0];
-                    ghostX.value = touch.clientX - 40;
-                    ghostY.value = touch.clientY - 40;
-                    
-                    dragTargetIndex.value = getIndexFromCoords(touch.clientX, touch.clientY);
-                };
-
-                const handleTouchEnd = (e) => {
-                    if (isDragging.value && dragStartIndex.value !== null && dragTargetIndex.value !== null) {
-                        // Swap
-                        const source = grid.value[dragStartIndex.value].content;
-                        const target = grid.value[dragTargetIndex.value].content;
-                        
-                        grid.value[dragTargetIndex.value].content = source;
-                        grid.value[dragStartIndex.value].content = target;
-                    }
-                    
-                    // Reset
-                    isDragging.value = false;
-                    dragStartIndex.value = null;
-                    dragTargetIndex.value = null;
-                    draggingContent.value = null;
-                };
-
-                const getSkillEffectText = (content) => {
-                    if (content.id === 's_red') return '力+1';
-                    if (content.id === 's_blue') return '知+1';
-                    if (content.id === 's_green') return '食半減';
-                    if (content.id === 's_black') return '昇進';
-                    return '';
-                };
-
-                const getModalTitle = () => {
-                    if (selectedGridIndex.value === null) return '';
-                    const c = grid.value[selectedGridIndex.value].content;
-                    return c ? c.name : '';
-                };
-
-                const getModalDesc = () => {
-                    if (selectedGridIndex.value === null) return '';
-                    const c = grid.value[selectedGridIndex.value].content;
-                    return c ? c.desc : '';
-                };
-
-                const resetGame = () => {
-                    money.value = 100;
-                    timeLeft.value = 10;
-                    phase.value = 'setup';
-                    grid.value = Array(16).fill().map(() => ({ content: null }));
-                    startGame();
-                };
-
-                onMounted(() => {
-                    startGame();
-                });
-
-                return {
-                    phase, money, formattedTime, grid, 
-                    activeTab, selectedPaletteItem, currentCategoryItems,
-                    selectPaletteItem, handleCellClick, 
-                    showDetailModal, selectedGridIndex, closeDetailModal, deleteItem,
-                    getModalTitle, getModalDesc, getSkillEffectText,
-                    // Drag
-                    handleTouchStart, handleTouchMove: customTouchMove, handleTouchEnd,
-                    isDragging, ghostX, ghostY, draggingContent, dragTargetIndex,
-                    boardContainer, resetGame
-                };
+    function gameLoop() {
+        if (gameState.phase === 1 || gameState.phase === 2) {
+            gameState.frameCount++;
+            if (gameState.frameCount >= 60) {
+                gameState.frameCount = 0;
+                oneSecondTick();
             }
-        }).mount('#app');
-    </script>
+        }
+        render(); // Always render for smooth UI
+        if (gameState.phase !== 3) requestAnimationFrame(gameLoop);
+    }
+
+    function oneSecondTick() {
+        gameState.timer--;
+        
+        // Phase transition
+        if (gameState.phase === 1 && gameState.timer < 0) {
+            gameState.phase = 2;
+            gameState.timer = 60;
+        } else if (gameState.phase === 2 && gameState.timer < 0) {
+            endGame();
+            return;
+        }
+
+        // Processing (Only in Main Game)
+        if (gameState.phase === 2) {
+            processGameLogic();
+        }
+    }
+
+    function endGame() {
+        gameState.phase = 3;
+        document.querySelector('.result-score').textContent = gameState.money + "万円";
+        document.getElementById('overlay').style.display = 'flex';
+    }
+
+    function processGameLogic() {
+        const grid = gameState.grid;
+        
+        // 1. Skill Effects (Growth / Rank Up)
+        gameState.skillTimer++;
+        const triggerRankUp = (gameState.skillTimer % 10 === 0);
+
+        grid.forEach((item, idx) => {
+            if (!item || item.type !== 'skill') return;
+            
+            const neighbors = getNeighbors(idx);
+            neighbors.forEach(nIdx => {
+                const neighbor = grid[nIdx];
+                if (neighbor && neighbor.type === 'person') {
+                    if (item.data.effect === 'str_buff') neighbor.data.str += 1;
+                    if (item.data.effect === 'int_buff') neighbor.data.int += 1;
+                    if (item.data.effect === 'rank_up' && triggerRankUp) neighbor.data.rank++;
+                }
+            });
+        });
+
+        // 2. Work & Consumption
+        // Helper: get Buffs first to check for "Rest" (Half consumption)
+        const buffs = new Array(GRID_SIZE).fill(null).map(() => ({ rest: false }));
+        grid.forEach((item, idx) => {
+            if (item && item.type === 'skill' && item.data.effect === 'cal_save') {
+                getNeighbors(idx).forEach(n => buffs[n].rest = true);
+            }
+        });
+
+        // Work Processing
+        grid.forEach((person, pIdx) => {
+            if (!person || person.type !== 'person') return;
+            
+            const neighbors = getNeighbors(pIdx);
+            let worked = false;
+
+            // Find valid task
+            for (let nIdx of neighbors) {
+                const task = grid[nIdx];
+                if (task && task.type === 'task') {
+                    // Check compatibility
+                    let power = 0;
+                    if (task.data.req === 'str') power = person.data.str;
+                    else if (task.data.req === 'int') power = person.data.int;
+                    else if (task.data.req === 'both') power = person.data.str + person.data.int;
+                    
+                    // Black Task Restriction
+                    if (task.data.needBlack && person.data.id !== 'p_black') power = 0;
+
+                    if (power > 0) {
+                        task.data.currentHp += power;
+                        worked = true;
+                        // Task Completion
+                        if (task.data.currentHp >= task.data.maxHp) {
+                            task.data.currentHp = 0; // Reset
+                            // Reward: Base * Rank. Ceil for player favor (though integers usually don't need it here)
+                            const reward = Math.ceil(task.data.reward * person.data.rank);
+                            gameState.money += reward;
+                        }
+                    }
+                }
+            }
+
+            // Food Consumption (Only if worked)
+            if (worked) {
+                // Find food
+                let foodFound = false;
+                for (let nIdx of neighbors) {
+                    const food = grid[nIdx];
+                    if (food && food.type === 'food') {
+                        let consumption = 20; // Default mismatch
+                        
+                        // Color Match or Green/Black Food
+                        const pColor = person.data.color; // bg-red
+                        const fColor = food.data.color; 
+                        
+                        if (pColor === fColor || fColor === 'bg-green' || fColor === 'bg-black') {
+                            consumption = 10;
+                        }
+
+                        // Skill: Rest (Half Consumption). Player favorable = Floor (pay less cost)
+                        if (buffs[pIdx].rest) {
+                            consumption = Math.floor(consumption / 2);
+                        }
+
+                        food.data.currentHp -= consumption;
+                        foodFound = true;
+                        
+                        // Food Depletion Logic handled in separate pass or immediately?
+                        // Let's handle immediately to prevent over-eating from dead food
+                        if (food.data.currentHp <= 0) {
+                            handleFoodDeath(nIdx, food);
+                        }
+                        break; // Eat from one source per tick? Simplest rule.
+                    }
+                }
+            }
+        });
+    }
+
+    function handleFoodDeath(idx, foodItem) {
+        // Remove food
+        gameState.grid[idx] = null;
+
+        // Black Food Explosion
+        if (foodItem.data.special === 'bomb') {
+            const neighbors = getNeighbors(idx);
+            neighbors.forEach(nIdx => {
+                const victim = gameState.grid[nIdx];
+                if (victim && victim.type === 'person') {
+                    gameState.grid[nIdx] = null; // Kill
+                }
+            });
+        }
+    }
+
+    function getNeighbors(idx) {
+        const n = [];
+        const r = Math.floor(idx / COLS);
+        const c = idx % COLS;
+        
+        if (r > 0) n.push(idx - COLS); // Top
+        if (r < ROWS - 1) n.push(idx + COLS); // Bottom
+        if (c > 0) n.push(idx - 1); // Left
+        if (c < COLS - 1) n.push(idx + 1); // Right
+        return n;
+    }
+
+    // --- Interaction ---
+
+    function setTab(tab) {
+        gameState.currentTab = tab;
+        gameState.selectedItem = null;
+        updateControls();
+    }
+
+    function updateControls() {
+        // Update Tabs
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab')[['person','food','task','skill'].indexOf(gameState.currentTab)].classList.add('active');
+
+        // Update Palette
+        const palette = document.getElementById('palette');
+        palette.innerHTML = '';
+        const items = DB[gameState.currentTab];
+        
+        items.forEach(item => {
+            const el = document.createElement('div');
+            el.className = `palette-item ${item.color}`;
+            if (gameState.selectedItem && gameState.selectedItem.id === item.id) {
+                el.classList.add('selected');
+            }
+            el.innerHTML = `
+                <div class="cost-badge">${item.cost > 0 ? item.cost : '0'}</div>
+                <div class="item-icon">${item.icon}</div>
+                <div>${item.name}</div>
+            `;
+            el.onclick = () => selectItem(item);
+            palette.appendChild(el);
+        });
+    }
+
+    function selectItem(item) {
+        gameState.selectedItem = item;
+        // Info text
+        let info = `${item.name} (¥${item.cost}) `;
+        if (item.str) info += `力:${item.str} 知:${item.int}`;
+        if (item.hp && !item.reward) info += `HP:${item.hp}`;
+        if (item.reward) info += `報酬:${item.reward}万`;
+        if (item.effect) info += `効果:隣接支援`;
+        document.getElementById('info-panel').textContent = info;
+        updateControls();
+    }
+
+    function handleCellClick(idx) {
+        // Toggle Delete Mode if occupied? Or just select for simplicity
+        const existing = gameState.grid[idx];
+
+        if (existing) {
+            // Check for delete overlay
+            const cell = document.querySelector(`.cell[data-index="${idx}"]`);
+            if (cell.querySelector('.cell-overlay')) {
+                // Remove overlay
+                render(); 
+            } else {
+                // Show delete/detail
+                render(); // Clear others
+                const overlay = document.createElement('div');
+                overlay.className = 'cell-overlay';
+                overlay.innerHTML = `<button class="del-btn">削除</button>`;
+                overlay.querySelector('button').onclick = (e) => {
+                    e.stopPropagation();
+                    gameState.grid[idx] = null;
+                    render();
+                };
+                cell.appendChild(overlay);
+                
+                // Show details in info panel
+                let info = existing.data.name;
+                if(existing.type === 'person') info += ` (Rank:${existing.data.rank} 力${existing.data.str}/知${existing.data.int})`;
+                if(existing.type === 'food') info += ` (HP:${existing.data.currentHp})`;
+                document.getElementById('info-panel').textContent = info;
+            }
+            return;
+        }
+
+        // Place Item
+        if (gameState.selectedItem) {
+            if (gameState.money >= gameState.selectedItem.cost) {
+                gameState.money -= gameState.selectedItem.cost;
+                
+                // Instance creation
+                const data = { ...gameState.selectedItem };
+                if (gameState.currentTab === 'person') {
+                    data.rank = 1;
+                }
+                if (gameState.currentTab === 'food') {
+                    data.currentHp = data.hp;
+                    data.maxHp = data.hp;
+                }
+                if (gameState.currentTab === 'task') {
+                    data.currentHp = 0;
+                    data.maxHp = data.hp;
+                }
+                
+                gameState.grid[idx] = {
+                    type: gameState.currentTab,
+                    data: data
+                };
+                render();
+            } else {
+                alert("資金が足りません！");
+            }
+        }
+    }
+
+    // --- Drag & Drop (Touch) ---
+    let dragSrc = null;
+
+    function handleTouchStart(e) {
+        const idx = parseInt(e.currentTarget.dataset.index);
+        if (gameState.grid[idx]) {
+            dragSrc = idx;
+            e.currentTarget.classList.add('dragging');
+        }
+    }
+
+    function handleTouchMove(e) {
+        if (dragSrc === null) return;
+        e.preventDefault(); // Prevent scroll
+    }
+
+    function handleTouchEnd(e) {
+        if (dragSrc === null) return;
+        
+        const touch = e.changedTouches[0];
+        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        const cell = targetEl ? targetEl.closest('.cell') : null;
+
+        document.querySelector(`.cell[data-index="${dragSrc}"]`).classList.remove('dragging');
+
+        if (cell) {
+            const targetIdx = parseInt(cell.dataset.index);
+            if (targetIdx !== dragSrc) {
+                // Swap
+                const temp = gameState.grid[targetIdx];
+                gameState.grid[targetIdx] = gameState.grid[dragSrc];
+                gameState.grid[dragSrc] = temp;
+                render();
+            }
+        }
+        dragSrc = null;
+    }
+
+    // --- Rendering ---
+    
+    function render() {
+        // Timer
+        const tEl = document.getElementById('timer');
+        if (gameState.phase === 0) tEl.textContent = "準備中";
+        else if (gameState.phase === 1) {
+            tEl.style.color = 'var(--c-red)';
+            tEl.textContent = gameState.timer;
+        } else {
+            tEl.style.color = 'var(--c-black)';
+            const m = Math.floor(gameState.timer / 60);
+            const s = gameState.timer % 60;
+            tEl.textContent = `${m}:${s < 10 ? '0'+s : s}`;
+        }
+
+        // Money
+        document.getElementById('money').textContent = gameState.money;
+
+        // Grid
+        const cells = document.querySelectorAll('.cell');
+        gameState.grid.forEach((item, i) => {
+            const cell = cells[i];
+            
+            // Skip re-rendering if has overlay (delete button) to avoid flicker
+            if (cell.querySelector('.cell-overlay')) return;
+
+            cell.innerHTML = ''; // Clear
+
+            if (item) {
+                const d = item.data;
+                const div = document.createElement('div');
+                div.className = `item ${d.color}`;
+                
+                let content = `<div class="item-icon">${d.icon}</div>`;
+                
+                // Stats/Bars
+                if (item.type === 'person') {
+                    content += `<div class="item-info">R${d.rank}<br>S${d.str}/I${d.int}</div>`;
+                } else if (item.type === 'food') {
+                    const pct = Math.ceil((d.currentHp / d.maxHp) * 100);
+                    content += `
+                        <div class="bar-container">
+                            <div class="bar-fill bar-hp" style="width:${pct}%"></div>
+                        </div>
+                        <div class="item-info">${d.currentHp}</div>
+                    `;
+                } else if (item.type === 'task') {
+                    const pct = Math.ceil((d.currentHp / d.maxHp) * 100);
+                    content += `
+                        <div class="bar-container">
+                            <div class="bar-fill bar-progress" style="width:${pct}%"></div>
+                        </div>
+                        <div class="item-info">¥${d.reward * (d.rank || 1)}</div>
+                    `; // Note: Task doesn't have rank in data, but logic uses person rank. Showing base reward.
+                       // Re-reading spec: Reward is 20 * Rank. Rank comes from person.
+                       // UI can only show base reward or "Task".
+                       content = content.replace(`¥${d.reward * (d.rank || 1)}`, 'Task');
+                       content += `<div class="item-info">${d.req}</div>`;
+                } else if (item.type === 'skill') {
+                    content += `<div class="item-info">${d.name}</div>`;
+                }
+
+                div.innerHTML = content;
+                cell.appendChild(div);
+            }
+        });
+    }
+
+    // Start
+    init();
+
+</script>
 </body>
 </html>
