@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>１分で稼ぐ - 1 Minute Earn</title>
+    <style>
+        :root {
+            --c-red: #FF6B6B;
+            --c-blue: #4ECDC4;
+            --c-green: #95E1D3;
+            --c-black: #2C3E50;
+            --c-bg: #f0f2f5;
+            --c-text: #333;
+            --c-money: #f39c12;
+            --h-header: 10dvh;
+            --h-board: 50dvh;
+            --h-controls: 40dvh;
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none; /* スクロール・ズーム完全禁止 */
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100vw;
+            height: 100dvh;
+            overflow: hidden;
+            background-color: var(--c-bg);
+            color: var(--c-text);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* --- 1. Header (10%) --- */
+        header {
+            height: var(--h-header);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0 16px;
+            background: white;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+            z-index: 10;
+        }
+
+        .timer-box {
+            font-size: 2rem;
+            font-family: monospace;
+            font-weight: bold;
+            color: var(--c-black);
+        }
+
+        .money-box {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #d35400;
+        }
+        .money-box::after { content: '万円'; font-size: 0.8rem; color: #666; margin-left:2px; }
+
+        #start-btn {
+            background: var(--c-red);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-weight: bold;
+            border-radius: 20px;
+            font-size: 1rem;
+            box-shadow: 0 4px 0 #c0392b;
+        }
+        #start-btn:active { transform: translateY(4px); box-shadow: none; }
+        #start-btn:disabled { background: #ccc; box-shadow: none; transform: none; opacity: 0; pointer-events: none; }
+
+        /* --- 2. Board (50%) --- */
+        #board-area {
+            height: var(--h-board);
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 10px;
+        }
+
+        #grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            width: 100%;
+            max-width: 500px; /* タブレット等での広がりすぎ防止 */
+            aspect-ratio: 1;  /* 正方形維持 */
+        }
+
+        .cell {
+            background: white;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden; /* 絶対にはみ出させない */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            aspect-ratio: 1;
+            cursor: pointer;
+        }
+
+        /* Item Representation */
+        .item {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            position: relative;
+        }
+        
+        .bg-red { background: var(--c-red); color: white; }
+        .bg-blue { background: var(--c-blue); color: white; }
+        .bg-green { background: var(--c-green); color: #333; }
+        .bg-black { background: var(--c-black); color: white; }
+
+        .item-icon { font-size: 1.8rem; line-height: 1; margin-bottom: 2px; }
+        .item-label { font-size: 0.6rem; font-weight: bold; white-space: nowrap; }
+        .item-stat { font-size: 0.55rem; opacity: 0.9; }
+
+        /* Delete Overlay */
+        .delete-overlay {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 5;
+            animation: fadeIn 0.1s;
+        }
+        .del-btn {
+            background: var(--c-red); color: white;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 40px; height: 40px;
+            font-size: 1.2rem;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .del-text { color: white; font-size: 0.6rem; margin-top: 4px; }
+
+        /* Bars */
+        .bar-wrap {
+            position: absolute;
+            bottom: 0; left: 0; width: 100%; height: 6px;
+            display: flex;
+        }
+        .bar { height: 100%; transition: width 0.2s linear; }
+        .bar-hp { background: #27ae60; width: 0%; } /* Food HP */
+        .bar-task { background: #f1c40f; width: 0%; } /* Task Progress */
+
+        /* --- 3. Controls (40% -> Divided by 3) --- */
+        #controls {
+            height: var(--h-controls);
+            background: white;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #ddd;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+
+        .ctrl-section {
+            flex: 1; /* 正確に3等分 */
+            display: flex;
+            overflow: hidden;
+            border-bottom: 1px solid #eee;
+        }
+
+        /* Top: Description */
+        #desc-panel {
+            padding: 10px 16px;
+            flex-direction: column;
+            justify-content: center;
+            font-size: 0.85rem;
+            background: #fdfdfd;
+        }
+        .desc-title { font-weight: bold; margin-bottom: 4px; display: flex; align-items: center; gap:8px;}
+        .desc-text { color: #666; font-size: 0.75rem; line-height: 1.3; }
+
+        /* Middle: Palette */
+        #palette {
+            overflow-x: auto;
+            align-items: center;
+            padding: 0 10px;
+            gap: 10px;
+        }
+        .palette-item {
+            min-width: 60px; height: 60px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.7rem;
+            position: relative;
+            background: #eee;
+            border: 2px solid transparent;
+        }
+        .palette-item.selected { border-color: var(--c-black); background: #fff; transform: scale(1.05); }
+        .cost-badge {
+            position: absolute; top: -4px; right: -4px;
+            background: var(--c-money); color: white;
+            font-size: 0.6rem; padding: 2px 5px;
+            border-radius: 10px; font-weight: bold;
+        }
+
+        /* Bottom: Tabs */
+        #tabs {
+            align-items: stretch;
+        }
+        .tab {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 0.9rem;
+            color: #999;
+            background: #fafafa;
+            transition: 0.2s;
+        }
+        .tab.active {
+            background: white;
+            color: var(--c-black);
+            font-weight: bold;
+            border-top: 3px solid var(--c-black);
+        }
+
+        /* Result Overlay */
+        #result-overlay {
+            position: absolute; top:0; left:0; width:100%; height:100%;
+            background: rgba(0,0,0,0.9);
+            z-index: 100;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+        }
+        
+        @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="timer-box" id="timer">--:--</div>
+    <div class="money-box" id="money">100</div>
+    <button id="start-btn" onclick="game.startCountdown()">START</button>
+</header>
+
+<div id="board-area">
+    <div id="grid">
+        </div>
+</div>
+
+<div id="controls">
+    <div class="ctrl-section" id="desc-panel">
+        <div class="desc-title" id="d-title">選択なし</div>
+        <div class="desc-text" id="d-text">下のリストからアイテムを選択してください。<br>STARTボタンを押すと配置可能になります。</div>
+    </div>
+    
+    <div class="ctrl-section" id="palette">
+        </div>
+
+    <div class="ctrl-section" id="tabs">
+        <div class="tab active" onclick="ui.setTab('person')">人</div>
+        <div class="tab" onclick="ui.setTab('food')">食べ物</div>
+        <div class="tab" onclick="ui.setTab('task')">タスク</div>
+        <div class="tab" onclick="ui.setTab('skill')">スキル</div>
+    </div>
+</div>
+
+<div id="result-overlay">
+    <h1 style="font-size:3rem; margin-bottom:0;">FINISH</h1>
+    <p>最終資産</p>
+    <div style="font-size:4rem; color:var(--c-money); font-weight:bold; margin-bottom:30px;" id="final-score">0万円</div>
+    <button onclick="location.reload()" style="padding:15px 40px; font-size:1.2rem; border-radius:30px; border:none;">タイトルへ戻る</button>
+</div>
+
+<script>
+/**
+ * Game Configuration & Logic
+ */
+const CONFIG = {
+    ROWS: 4,
+    COLS: 4,
+    INIT_MONEY: 100,
+    SETUP_TIME: 10,
+    GAME_TIME: 60
+};
+
+// Database
+const DB = {
+    person: [
+        { id: 'p1', name: '肉体派', cost: 30, color: 'bg-red', icon: '💪', str: 15, int: 5, desc: '力仕事が得意。' },
+        { id: 'p2', name: '頭脳派', cost: 30, color: 'bg-blue', icon: '🧠', str: 5, int: 15, desc: '知的作業が得意。' },
+        { id: 'p3', name: 'バランス', cost: 30, color: 'bg-green', icon: '⚖️', str: 10, int: 10, desc: '平均的な能力。' },
+        { id: 'p4', name: '新人(黒)', cost: 30, color: 'bg-black', icon: '♟️', str: 5, int: 5, desc: '能力は低いが闇案件に必須。' }
+    ],
+    food: [
+        { id: 'f1', name: '赤の食料', cost: 5, color: 'bg-red', icon: '🍖', hp: 200, desc: '赤の人が好む(消費減)。' },
+        { id: 'f2', name: '青の食料', cost: 5, color: 'bg-blue', icon: '🐟', hp: 200, desc: '青の人が好む(消費減)。' },
+        { id: 'f3', name: '緑の食料', cost: 10, color: 'bg-green', icon: '🥗', hp: 200, desc: '誰でも少し食べやすい。' },
+        { id: 'f4', name: '謎の肉', cost: 0, color: 'bg-black', icon: '☠️', hp: 200, desc: '無くなると周囲を巻き込む。' }
+    ],
+    task: [
+        { id: 't1', name: '力仕事', cost: 0, color: 'bg-red', icon: '📦', hp: 200, req: 'str', reward: 20, desc: '力で進行。報酬20万。' },
+        { id: 't2', name: 'デスク', cost: 0, color: 'bg-blue', icon: '💻', hp: 200, req: 'int', reward: 20, desc: '知で進行。報酬20万。' },
+        { id: 't3', name: '総合職', cost: 0, color: 'bg-green', icon: '📝', hp: 300, req: 'sum', reward: 20, desc: '合計値で進行。' },
+        { id: 't4', name: '闇案件', cost: 0, color: 'bg-black', icon: '💼', hp: 500, req: 'sum', reward: 100, desc: '黒の人必須。報酬100万。' }
+    ],
+    skill: [
+        { id: 's1', name: 'ジム', cost: 30, color: 'bg-red', icon: '🏋️', desc: '周囲の人の「力」が毎秒+1成長。' },
+        { id: 's2', name: '図書館', cost: 30, color: 'bg-blue', icon: '📚', desc: '周囲の人の「知」が毎秒+1成長。' },
+        { id: 's3', name: '休憩所', cost: 30, color: 'bg-green', icon: '☕', desc: '周囲の人の食料消費が半減。' },
+        { id: 's4', name: '研修所', cost: 30, color: 'bg-black', icon: '🏫', desc: '10秒毎に周囲のランクUP。' }
+    ]
+};
+
+// State
+const state = {
+    phase: 0, // 0:Wait, 1:Setup, 2:Main, 3:Result
+    money: CONFIG.INIT_MONEY,
+    timer: 0,
+    grid: Array(16).fill(null),
+    currentTab: 'person',
+    selectedItem: null,
+    deleteModeIndex: -1, // Overlay showing index
+    frameCount: 0,
+    secCounter: 0
+};
+
+// UI Controller
+const ui = {
+    init: () => {
+        ui.createGrid();
+        ui.setTab('person');
+        ui.updateDisplay();
+    },
+
+    createGrid: () => {
+        const gridEl = document.getElementById('grid');
+        gridEl.innerHTML = '';
+        for(let i=0; i<16; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            cell.onclick = () => game.handleCellClick(i);
+            gridEl.appendChild(cell);
+        }
+    },
+
+    setTab: (tabName) => {
+        state.currentTab = tabName;
+        state.selectedItem = null;
+        
+        // Tab UI
+        document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab')[['person','food','task','skill'].indexOf(tabName)].classList.add('active');
+
+        // Palette UI
+        const palette = document.getElementById('palette');
+        palette.innerHTML = '';
+        DB[tabName].forEach(item => {
+            const el = document.createElement('div');
+            el.className = `palette-item ${item.color}`;
+            el.innerHTML = `
+                <div class="cost-badge">${item.cost}</div>
+                <div style="font-size:1.5rem">${item.icon}</div>
+                <div>${item.name}</div>
+            `;
+            el.onclick = () => ui.selectItem(item);
+            palette.appendChild(el);
+        });
+        
+        ui.updateDesc();
+    },
+
+    selectItem: (item) => {
+        state.selectedItem = item;
+        state.deleteModeIndex = -1; // Reset delete overlay
+        
+        // Update selection UI
+        document.querySelectorAll('.palette-item').forEach(el => el.classList.remove('selected'));
+        // (Simple visual check, in real app compare IDs)
+        // Re-rendering palette is overkill, just update description
+        ui.updateDesc();
+        ui.renderGrid(); // To remove delete overlay if any
+    },
+
+    updateDesc: () => {
+        const titleEl = document.getElementById('d-title');
+        const textEl = document.getElementById('d-text');
+        
+        if (!state.selectedItem) {
+            titleEl.innerHTML = 'アイテムを選択';
+            textEl.innerHTML = 'リストをタップして選択してください。';
+            return;
+        }
+
+        const item = state.selectedItem;
+        titleEl.innerHTML = `<span style="font-size:1.2rem">${item.icon}</span> ${item.name} <span style="color:#d35400; margin-left:10px;">¥${item.cost}万円</span>`;
+        textEl.innerHTML = item.desc;
+    },
+
+    updateDisplay: () => {
+        // Money
+        document.getElementById('money').innerText = state.money;
+        
+        // Timer
+        const tEl = document.getElementById('timer');
+        if (state.phase === 0) tEl.innerText = "WAIT";
+        else if (state.phase === 1) {
+            tEl.innerText = `-${state.timer}`;
+            tEl.style.color = 'var(--c-red)';
+        } else if (state.phase === 2) {
+            // Digital clock style
+            const m = Math.floor(state.timer / 60);
+            const s = state.timer % 60;
+            tEl.innerText = `${m}:${s.toString().padStart(2, '0')}`;
+            tEl.style.color = 'var(--c-black)';
+        }
+    },
+
+    renderGrid: () => {
+        const cells = document.querySelectorAll('.cell');
+        state.grid.forEach((obj, i) => {
+            const cell = cells[i];
+            cell.innerHTML = ''; // Clean
+
+            if (!obj) {
+                cell.style.backgroundColor = 'white';
+                return;
+            }
+
+            // Create Item View
+            const div = document.createElement('div');
+            div.className = `item ${obj.def.color}`;
+            
+            // Icon
+            let html = `<div class="item-icon">${obj.def.icon}</div>`;
+            
+            // Stats Text
+            if (obj.type === 'person') {
+                html += `<div class="item-label">Rank${obj.rank}</div>`;
+                html += `<div class="item-stat">S${obj.str}/I${obj.int}</div>`;
+            } else if (obj.type === 'food') {
+                html += `<div class="item-label">${obj.hp}</div>`;
+                const pct = Math.ceil((obj.hp / obj.maxHp)*100);
+                html += `<div class="bar-wrap"><div class="bar bar-hp" style="width:${pct}%"></div></div>`;
+            } else if (obj.type === 'task') {
+                html += `<div class="item-label">¥${Math.ceil(obj.def.reward * (obj.rank || 1))}</div>`;
+                const pct = Math.ceil((obj.hp / obj.maxHp)*100);
+                html += `<div class="bar-wrap"><div class="bar bar-task" style="width:${pct}%"></div></div>`;
+            } else {
+                html += `<div class="item-label">${obj.def.name}</div>`;
+            }
+            
+            div.innerHTML = html;
+            cell.appendChild(div);
+
+            // Delete Overlay
+            if (state.deleteModeIndex === i) {
+                const ov = document.createElement('div');
+                ov.className = 'delete-overlay';
+                ov.innerHTML = `<div class="del-btn">✕</div><div class="del-text">削除する</div>`;
+                cell.appendChild(ov);
+            }
+        });
+    }
+};
+
+// Game Logic Controller
+const game = {
+    startCountdown: () => {
+        if (state.phase !== 0) return;
+        state.phase = 1;
+        state.timer = CONFIG.SETUP_TIME;
+        document.getElementById('start-btn').disabled = true;
+        
+        ui.updateDisplay();
+        requestAnimationFrame(game.loop);
+    },
+
+    loop: () => {
+        if (state.phase === 3) return;
+
+        state.frameCount++;
+        if (state.frameCount >= 60) {
+            state.frameCount = 0;
+            game.tickSecond();
+        }
+
+        ui.renderGrid(); // Render every frame for smoothness (if we had animations)
+        requestAnimationFrame(game.loop);
+    },
+
+    tickSecond: () => {
+        state.timer--;
+        ui.updateDisplay();
+
+        if (state.phase === 1 && state.timer < 0) {
+            state.phase = 2;
+            state.timer = CONFIG.GAME_TIME;
+        } else if (state.phase === 2 && state.timer < 0) {
+            game.end();
+            return;
+        }
+
+        if (state.phase === 2) {
+            game.processLogic();
+        }
+    },
+
+    processLogic: () => {
+        state.secCounter++;
+        const g = state.grid;
+        
+        // 1. Buffs (Skill -> Person)
+        g.forEach((cell, i) => {
+            if (!cell || cell.type !== 'skill') return;
+            const neighbors = game.getNeighbors(i);
+            
+            // Rank up every 10s (Training Center)
+            const isRankUp = (cell.def.id === 's4' && state.secCounter % 10 === 0);
+
+            neighbors.forEach(nIdx => {
+                const target = g[nIdx];
+                if (target && target.type === 'person') {
+                    if (cell.def.id === 's1') target.str += 1; // Gym
+                    if (cell.def.id === 's2') target.int += 1; // Library
+                    if (isRankUp) target.rank += 1; // Training
+                }
+            });
+        });
+
+        // 2. Identify active workers for food consumption
+        const activeWorkers = new Set();
+
+        // 3. Task Progress
+        g.forEach((cell, i) => {
+            if (!cell || cell.type !== 'task') return;
+            
+            const neighbors = game.getNeighbors(i);
+            let totalPower = 0;
+
+            neighbors.forEach(nIdx => {
+                const p = g[nIdx];
+                if (p && p.type === 'person') {
+                    // Black Task Check
+                    if (cell.def.id === 't4' && p.def.id !== 'p4') return;
+                    
+                    let power = 0;
+                    if (cell.def.req === 'str') power = p.str;
+                    else if (cell.def.req === 'int') power = p.int;
+                    else power = p.str + p.int;
+
+                    if (power > 0) {
+                        totalPower += power;
+                        activeWorkers.add(nIdx); // Mark as working
+                    }
+                }
+            });
+
+            if (totalPower > 0) {
+                cell.hp += totalPower; // Logic: HP starts 0, goes to MAX
+                if (cell.hp >= cell.maxHp) {
+                    // Completed
+                    cell.hp = 0;
+                    // Reward Calculation: Reward * Rank of Highest Neighbor? 
+                    // Simplified: Use a multiplier based on the average rank or just base.
+                    // Spec says: "Reward x Rank". Let's use the Rank of the person who contributed?
+                    // To keep it simple and player-favorable: Use the Highest Rank among workers.
+                    let maxRank = 1;
+                    neighbors.forEach(nIdx => {
+                        if(g[nIdx] && g[nIdx].type === 'person') maxRank = Math.max(maxRank, g[nIdx].rank);
+                    });
+                    
+                    state.money += Math.ceil(cell.def.reward * maxRank);
+                    ui.updateDisplay();
+                }
+            }
+        });
+
+        // 4. Food Consumption
+        activeWorkers.forEach(pIdx => {
+            const p = g[pIdx];
+            const neighbors = game.getNeighbors(pIdx);
+            
+            // Check for Rest Area (Green Skill)
+            let halfConsum = false;
+            neighbors.forEach(nIdx => {
+                if (g[nIdx] && g[nIdx].def.id === 's3') halfConsum = true;
+            });
+
+            // Find Food
+            for (let nIdx of neighbors) {
+                const food = g[nIdx];
+                if (food && food.type === 'food' && food.hp > 0) {
+                    let cost = 20;
+                    // Preference check
+                    if (p.def.color === food.def.color || food.def.color === 'bg-green' || food.def.color === 'bg-black') {
+                        cost = 10;
+                    }
+                    if (halfConsum) cost = Math.floor(cost / 2); // Player favor on cost? Floor = less consumption.
+
+                    food.hp -= cost;
+                    if (food.hp <= 0) {
+                        food.hp = 0;
+                        game.handleFoodDeath(nIdx, food);
+                    }
+                    break; // Eat from one source per second
+                }
+            }
+        });
+    },
+
+    handleFoodDeath: (idx, foodObj) => {
+        g = state.grid;
+        g[idx] = null; // Remove food
+        
+        // Black Food Explosion
+        if (foodObj.def.id === 'f4') {
+            const neighbors = game.getNeighbors(idx);
+            neighbors.forEach(nIdx => {
+                if (g[nIdx] && g[nIdx].type === 'person') {
+                    g[nIdx] = null; // Kill person
+                }
+            });
+        }
+    },
+
+    handleCellClick: (index) => {
+        // Phase Check: Phase 0 blocks placement
+        if (state.phase === 0) return;
+
+        // Delete Logic
+        if (state.deleteModeIndex === index) {
+            // Confirm Delete
+            state.grid[index] = null;
+            state.deleteModeIndex = -1;
+            ui.renderGrid();
+            return;
+        }
+        
+        // Cancel Delete if clicking elsewhere
+        if (state.deleteModeIndex !== -1) {
+            state.deleteModeIndex = -1;
+            ui.renderGrid();
+            return; // Don't place immediately
+        }
+
+        // Occupied -> Show Delete Overlay
+        if (state.grid[index]) {
+            state.deleteModeIndex = index;
+            ui.renderGrid();
+            return;
+        }
+
+        // Place Logic
+        if (state.selectedItem) {
+            if (state.money >= state.selectedItem.cost) {
+                state.money -= state.selectedItem.cost;
+                ui.updateDisplay();
+
+                // Instantiate
+                const def = state.selectedItem;
+                const obj = {
+                    type: state.currentTab,
+                    def: def,
+                    // Copy dynamic props
+                    rank: 1,
+                    str: def.str || 0,
+                    int: def.int || 0,
+                    hp: (state.currentTab === 'task') ? 0 : (def.hp || 0), // Task starts 0, Food starts Max
+                    maxHp: def.hp || 0
+                };
+                
+                state.grid[index] = obj;
+                ui.renderGrid();
+            }
+        }
+    },
+
+    getNeighbors: (idx) => {
+        const n = [];
+        const r = Math.floor(idx / 4);
+        const c = idx % 4;
+        if (r > 0) n.push(idx - 4);
+        if (r < 3) n.push(idx + 4);
+        if (c > 0) n.push(idx - 1);
+        if (c < 3) n.push(idx + 1);
+        return n;
+    },
+
+    end: () => {
+        state.phase = 3;
+        document.getElementById('final-score').innerText = state.money + "万円";
+        document.getElementById('result-overlay').style.display = 'flex';
+    }
+};
+
+// Start
+window.onload = ui.init;
+
+</script>
+</body>
+</html>
